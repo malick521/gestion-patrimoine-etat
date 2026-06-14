@@ -24,7 +24,6 @@ public class AuditLogEntity {
     private String details;
     private String ancienneValeur;
     private String nouvelleValeur;
-    private String ipAddress;
 
     @CreatedDate
     private LocalDateTime dateAction;

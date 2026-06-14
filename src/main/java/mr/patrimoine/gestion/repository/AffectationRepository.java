@@ -13,10 +13,10 @@ public interface AffectationRepository extends MongoRepository<AffectationEntity
     List<AffectationEntity> findByBienId(String bienId);
     List<AffectationEntity> findByMinistereId(String ministereId);
     List<AffectationEntity> findByUserId(String userId);
-    List<AffectationEntity> findByStatutAffectation(StatutAffectation statut);
+    List<AffectationEntity> findByStatut(StatutAffectation statut);
     List<AffectationEntity> findByCreePar(String userId);
 
-    boolean existsByBienIdAndStatutAffectation(String bienId, StatutAffectation statut);
+    boolean existsByBienIdAndStatut(String bienId, StatutAffectation statut);
 
-    Optional<AffectationEntity> findByBienIdAndStatutAffectation(String bienId, StatutAffectation statut);
+    Optional<AffectationEntity> findByBienIdAndStatut(String bienId, StatutAffectation statut);
 }

@@ -1,6 +1,6 @@
 package mr.patrimoine.gestion.model.enums;
 
-public enum Role {
+public enum UserRole {
     
         ADMIN,
         GESTIONNAIRE,

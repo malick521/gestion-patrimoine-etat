@@ -8,6 +8,7 @@ import mr.patrimoine.gestion.dto.User.UserResponseDTO;
 import mr.patrimoine.gestion.exceptions.BusinessException;
 import mr.patrimoine.gestion.exceptions.ResourceNotFoundException;
 import mr.patrimoine.gestion.model.entity.UserEntity;
+import mr.patrimoine.gestion.model.enums.UserRole;
 import mr.patrimoine.gestion.repository.MinistereRepository;
 import mr.patrimoine.gestion.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,9 @@ public class AuthService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     // ==================== LOGIN ====================
     public LoginResponseDTO login(LoginRequestDTO dto) {
 
@@ -51,6 +55,10 @@ public class AuthService {
         // 4 — Mettre à jour la dernière connexion
         user.setDerniereConnexion(LocalDateTime.now());
         userRepository.save(user);
+
+        auditLogService.log(user.getId(), user.getEmail(),
+                "CONNEXION", "User", user.getId(),
+                "Connexion de " + user.getEmail());
 
         // 5 — Générer le token JWT
         String token = jwtUtil.generateToken(
@@ -89,7 +97,7 @@ public class AuthService {
                 .email(dto.getEmail())
                 .motDePasse(passwordEncoder.encode(dto.getMotDePasse()))
                 .ministereId(dto.getMinistereId())
-                .role(dto.getRole() != null ? dto.getRole() : UserEntity.Role.CONSULTANT)
+                .role(dto.getRole() != null ? dto.getRole() : UserRole.CONSULTANT)
                 .actif(true)
                 .dateCreation(LocalDateTime.now())
                 .build();
@@ -102,7 +110,7 @@ public class AuthService {
                 .nom(saved.getNom())
                 .prenom(saved.getPrenom())
                 .email(saved.getEmail())
-                .role(saved.getRole())
+                .userRole(saved.getRole())
                 .ministereId(saved.getMinistereId())
                 .ministereNom(ministere.getNom())
                 .actif(saved.isActif())

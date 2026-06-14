@@ -1,9 +1,9 @@
 package mr.patrimoine.gestion.dto.User;
 
-import mr.patrimoine.gestion.model.entity.UserEntity;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import mr.patrimoine.gestion.model.enums.Role;
+import mr.patrimoine.gestion.model.entity.UserEntity;
+import mr.patrimoine.gestion.model.enums.UserRole;
 
 @Data
 @NoArgsConstructor
@@ -28,5 +28,5 @@ public class UserRequestDTO {
     @NotBlank(message = "Ministère obligatoire")
     private String ministereId;
 
-    private Role role;
+    private UserRole role;
 }

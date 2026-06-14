@@ -6,7 +6,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.security.Key;
+import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,25 +27,25 @@ public class JwtUtil {
         claims.put("userId", userId);
 
         return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(email)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .claims(claims)                          // ← changé dans 0.12.x
+                .subject(email)                          // ← changé dans 0.12.x
+                .issuedAt(new Date())                    // ← changé dans 0.12.x
+                .expiration(new Date(System.currentTimeMillis() + expiration)) // ← changé
+                .signWith(getSigningKey())               // ← simplifié dans 0.12.x
                 .compact();
     }
 
-    // Extraire l'email du token
+    // Extraire l'email
     public String extractEmail(String token) {
         return extractAllClaims(token).getSubject();
     }
 
-    // Extraire le userId du token
+    // Extraire le userId
     public String extractUserId(String token) {
         return extractAllClaims(token).get("userId", String.class);
     }
 
-    // Extraire le role du token
+    // Extraire le role
     public String extractRole(String token) {
         return extractAllClaims(token).get("role", String.class);
     }
@@ -69,15 +69,15 @@ public class JwtUtil {
 
     // Extraire tous les claims
     private Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
+        return Jwts.parser()                         // ← changé dans 0.12.x
+                .verifyWith(getSigningKey())             // ← changé dans 0.12.x
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)               // ← changé dans 0.12.x
+                .getPayload();                           // ← changé dans 0.12.x
     }
 
-    // Construire la clé de signature
-    private Key getSigningKey() {
+    // Clé de signature
+    private SecretKey getSigningKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secret);
         return Keys.hmacShaKeyFor(keyBytes);
     }

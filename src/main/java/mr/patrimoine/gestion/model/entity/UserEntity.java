@@ -1,7 +1,7 @@
 package mr.patrimoine.gestion.model.entity;
 
 import lombok.*;
-import mr.patrimoine.gestion.model.enums.Role;
+import mr.patrimoine.gestion.model.enums.UserRole;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.index.Indexed;
@@ -32,7 +32,7 @@ public class UserEntity {
     @NotBlank
     private String motDePasse;
 
-    private Role role;
+    private UserRole role;
 
     private String ministereId;
 

@@ -13,9 +13,6 @@ public class AffectationRequestDTO {
     @NotBlank(message = "Bien obligatoire")
     private String bienId;
 
-    @NotBlank(message = "Utilisateur obligatoire")
-    private String userId;
-
     @NotBlank(message = "Ministère obligatoire")
     private String ministereId;
 

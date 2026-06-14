@@ -1,8 +1,7 @@
 package mr.patrimoine.gestion.dto.User;
 
-import mr.patrimoine.gestion.model.entity.UserEntity;
 import lombok.*;
-import mr.patrimoine.gestion.model.enums.Role;
+import mr.patrimoine.gestion.model.enums.UserRole;
 
 import java.time.LocalDateTime;
 
@@ -16,7 +15,7 @@ public class UserResponseDTO {
     private String nom;
     private String prenom;
     private String email;
-    private Role role;
+    private UserRole userRole;
     private String ministereId;
     private String ministereNom;
     private boolean actif;
