@@ -1,0 +1,38 @@
+services:
+  # 1. خدمة قاعدة البيانات
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - patrimoine-network
+
+  # 2. خدمة الخلفية
+# 2. خدمة الخلفية (Spring Boot Backend)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: patrimoine-back-container
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/patrimoine_db
+      - JWT_SECRET=ZmQ0YzZkZDI5N2JkNDZmMjhkNWQwMmI0MTlmZGE3YzM1NDk1YjQzMWVjYjJiZjM4MGMyNTNjYmM2NTZiMjQxOQ==
+      # إضافة هذا السطر لحل المشكلة (القيمة تعني 24 ساعة بالملي ثانية)
+      - JWT_EXPIRATION=86400000 
+    depends_on:
+      - mongodb
+    networks:
+      - patrimoine-network
+
+# تعريف الشبكة هنا هو "السر" الذي يمنع ظهور الخطأ
+networks:
+  patrimoine-network:
+    driver: bridge
+
+volumes:
+  mongo-data:

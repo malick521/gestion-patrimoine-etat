@@ -1,0 +1,87 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ["./src/**/*.{js,jsx,ts,tsx}"],
+  theme: {
+    extend: {
+      colors: {
+        // 1. ألوان مشروعك الأصلي (حافظنا عليها بالكامل)
+        primary: {
+          50:  '#f0f4ff',
+          100: '#e0eaff',
+          200: '#c2d4ff',
+          300: '#93b0ff',
+          400: '#5c82ff',
+          500: '#2d52e0',
+          600: '#1e3fc2',
+          700: '#162f9e',
+          800: '#102275',
+          900: '#0b1854',
+        },
+        
+        // 2. الألوان الجديدة المطلوبة لصفحة التسجيل الجديدة
+        "surface": "#faf8ff",
+        "on-primary-container": "#90a8ff",
+        "surface-dim": "#dad9e1",
+        "primary-fixed-dim": "#b6c4ff",
+        "on-secondary-fixed": "#0b1c30",
+        "on-tertiary": "#ffffff",
+        "surface-bright": "#faf8ff",
+        "on-background": "#1a1b21",
+        "surface-tint": "#4059aa",
+        "surface-container-highest": "#e3e1e9",
+        "on-surface-variant": "#444651",
+        "on-primary-fixed": "#00164e",
+        "custom-brand": "#00236f", // قمنا بتسميته هنا لكي لا يتعارض مع الـ primary الخاص بك
+        "on-secondary-container": "#54647a",
+        "surface-container-lowest": "#ffffff",
+        "outline": "#757682",
+        "on-primary": "#ffffff",
+        "secondary-container": "#d0e1fb",
+        "tertiary-fixed-dim": "#ffb691",
+        "surface-container-low": "#f4f3fa",
+        "on-secondary": "#ffffff",
+        "on-tertiary-fixed-variant": "#773205",
+        "on-surface": "#1a1b21",
+        "secondary": "#505f76",
+        "on-error": "#ffffff",
+        "inverse-on-surface": "#f1f0f7",
+        "secondary-fixed": "#d3e4fe",
+        "primary-container": "#1e3a8a",
+        "on-primary-fixed-variant": "#264191",
+        "surface-container-high": "#e9e7ef",
+        "tertiary-container": "#6e2c00",
+        "outline-variant": "#c5c5d3",
+        "inverse-surface": "#2f3036",
+        "tertiary-fixed": "#ffdbcb",
+        "surface-variant": "#e3e1e9",
+        "primary-fixed": "#dce1ff",
+        "on-tertiary-fixed": "#341100",
+        "error": "#ba1a1a",
+        "on-secondary-fixed-variant": "#38485d",
+        "background": "#faf8ff",
+        "on-tertiary-container": "#f39461",
+        "tertiary": "#4b1c00",
+        "on-error-container": "#93000a",
+        "secondary-fixed-dim": "#b7c8e1",
+        "inverse-primary": "#b6c4ff",
+        "surface-container": "#eeedf4",
+        "error-container": "#ffdad6"
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      // إضافة بعض المسافات المخصصة للتصميم
+      spacing: {
+        "gutter": "24px",
+        "md": "16px",
+        "base": "4px",
+        "container-max": "1440px",
+        "lg": "24px",
+        "xl": "40px",
+        "xxl": "64px",
+      }
+    },
+  },
+  plugins: [],
+};
