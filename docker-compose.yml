@@ -1,5 +1,5 @@
 services:
-  # 1. خدمة قاعدة البيانات
+  # 1. خدمة قاعدة البيانات (MongoDB Database)
   mongodb:
     image: mongo:7
     container_name: mongodb
@@ -10,8 +10,7 @@ services:
     networks:
       - patrimoine-network
 
-  # 2. خدمة الخلفية
-# 2. خدمة الخلفية (Spring Boot Backend)
+  # 2. خدمة الخلفية (Spring Boot Backend)
   backend:
     build:
       context: ./backend
@@ -26,6 +25,21 @@ services:
       - JWT_EXPIRATION=86400000 
     depends_on:
       - mongodb
+    networks:
+      - patrimoine-network
+
+  # 3. خدمة الواجهة الأمامية (React/Vite Frontend)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: patrimoine-front-container
+    ports:
+      # Si vous utilisez Vite en mode dev, gardez "5173:5173"
+      # Si vous utilisez Nginx pour la production, mettez plutôt "80:80" ou "3000:80"
+      - "5173:5173" 
+    depends_on:
+      - backend
     networks:
       - patrimoine-network
 
