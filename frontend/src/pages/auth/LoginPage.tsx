@@ -5,7 +5,7 @@ import { UserRequestDTO } from '../../types';
 import { 
   Mail, Lock, User, Building, ShieldCheck, 
   Eye, EyeOff, Loader2, ArrowRight, Info
-} from 'lucide-react'; // Ajout de l'icône Info
+} from 'lucide-react'; 
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -16,7 +16,7 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   
-  // NOUVEAU STATE : Pour afficher le message de mot de passe oublié
+  // STATE : Pour afficher le message de mot de passe oublié
   const [showForgotMsg, setShowForgotMsg] = useState(false);
 
   // States du formulaire
@@ -73,7 +73,7 @@ export const LoginPage: React.FC = () => {
     setPrenom('');
     setMinistereId('');
     setError('');
-    setShowForgotMsg(false); // On cache le message si on change de mode
+    setShowForgotMsg(false); 
   };
 
   const toggleMode = () => {
@@ -88,36 +88,45 @@ export const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen flex w-full font-sans bg-slate-50 selection:bg-[#00236f]/20">
       
-      {/* SECTION GAUCHE : VISUEL MARQUE */}
+      {/* SECTION GAUCHE : VISUEL MARQUE & MAURITANIE */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[#00174f]">
         <div className="absolute inset-0 z-0">
           <img 
-            alt="Architecture institutionnelle" 
-            className="w-full h-full object-cover object-center opacity-40 scale-105" 
-            src="https://images.unsplash.com/photo-1541888086225-b467e2a90091?q=80&w=2000&auto=format&fit=crop" 
+            alt="Paysage et Patrimoine de la Mauritanie" 
+            className="w-full h-full object-cover object-center opacity-60 scale-105" 
+            src="https://encrypted-tbn0.gstatic.com/licensed-image?q=tbn:ANd9GcR8vejWCpBOLF4xrD61zhZ7BRJxHVS6HXQ_9rgIxqpVWgdWYamQRWZdAyPeqg_ulus_4IcFk_zT5DzZFmYkIoSk4_s&s=19" 
           />
         </div>
-        <div className="absolute inset-0 z-10 bg-gradient-to-tr from-[#00174f] via-[#00236f]/90 to-transparent mix-blend-multiply"></div>
+        {/* Dégradé légèrement ajusté pour bien voir l'image tout en gardant le texte lisible */}
+        <div className="absolute inset-0 z-10 bg-gradient-to-tr from-[#00174f]/90 via-[#00236f]/70 to-transparent mix-blend-multiply"></div>
         
         <div className="relative z-20 flex flex-col justify-between p-16 w-full h-full text-white">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10">
+            <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 shadow-sm">
               <ShieldCheck className="w-8 h-8 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight">SIGPE</span>
+            <span className="text-xl font-bold tracking-tight">SIGPE • RIM</span>
           </div>
           
           <div className="max-w-lg animate-in fade-in slide-in-from-bottom-8 duration-700">
-            <h1 className="text-4xl font-extrabold mb-6 leading-tight tracking-tight text-white">
+            <h1 className="text-4xl font-extrabold mb-5 leading-tight tracking-tight text-white">
               Gestion Stratégique du Patrimoine de l'État
             </h1>
-            <p className="text-blue-100/80 text-lg font-medium leading-relaxed">
-              Portail officiel sécurisé. Interface d'administration pour le suivi, l'évaluation et la centralisation des actifs publics.
+            
+            {/* MOTTO NATIONAL */}
+            <div className="inline-block px-4 py-1.5 mb-6 border border-emerald-500/40 bg-emerald-900/40 backdrop-blur-sm rounded-full shadow-sm">
+              <p className="text-emerald-300 text-xs font-bold tracking-[0.2em] uppercase">
+                Honneur • Fraternité • Justice
+              </p>
+            </div>
+
+            <p className="text-blue-50 text-lg font-medium leading-relaxed drop-shadow-md">
+              Préserver, valoriser et transmettre l'héritage national. Le portail officiel d'administration des actifs de la République Islamique de Mauritanie.
             </p>
           </div>
           
-          <div className="text-xs text-blue-200/50 font-medium">
-            © {new Date().getFullYear()} Gouvernement. Tous droits réservés.
+          <div className="text-xs text-blue-200/70 font-medium">
+            © {new Date().getFullYear()} Gouvernement de la Mauritanie. Tous droits réservés.
           </div>
         </div>
       </div>
@@ -187,7 +196,7 @@ export const LoginPage: React.FC = () => {
                   className={inputClass} 
                   required 
                   type="email" 
-                  placeholder="agent@etat.gov" 
+                  placeholder="agent@etat.gov.mr" 
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
                 />
@@ -200,7 +209,7 @@ export const LoginPage: React.FC = () => {
                 {!isRegisterMode && (
                   <button 
                     type="button"
-                    onClick={() => setShowForgotMsg(!showForgotMsg)} // ACTION AU CLIC
+                    onClick={() => setShowForgotMsg(!showForgotMsg)}
                     className="text-xs font-bold text-[#00236f] hover:text-[#1e3a8a] transition"
                   >
                     Oublié ?
@@ -228,14 +237,14 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* NOUVEAU BLOC : MESSAGE D'INFORMATION (s'affiche uniquement si showForgotMsg est true) */}
+            {/* BLOC : MESSAGE D'INFORMATION MOT DE PASSE */}
             {showForgotMsg && !isRegisterMode && (
               <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
                 <Info className="w-5 h-5 text-[#00236f] shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-bold text-[#00236f]">Besoin d'aide ?</p>
                   <p className="text-xs text-blue-800/80 mt-1 leading-relaxed">
-                    Pour des raisons de sécurité liées aux données de l'État, la réinitialisation par email est désactivée. Veuillez contacter votre administrateur système à l'adresse <strong>support-sigpe@etat.gov</strong>.
+                    Pour des raisons de sécurité liées aux données de l'État, la réinitialisation par email est désactivée. Veuillez contacter votre administrateur système à l'adresse <strong>support-sigpe@etat.gov.mr</strong>.
                   </p>
                 </div>
               </div>
@@ -273,7 +282,7 @@ export const LoginPage: React.FC = () => {
           <div className="mt-8 flex items-start gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
             <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
             <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              Accès restreint au personnel autorisé. Vos connexions sont chiffrées de bout en bout et tracées dans la piste d'audit.
+              Accès restreint au personnel autorisé. Vos connexions sont chiffrées de bout en bout et tracées dans la piste d'audit gouvernementale.
             </p>
           </div>
 
