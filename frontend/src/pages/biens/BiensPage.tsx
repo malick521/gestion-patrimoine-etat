@@ -1,17 +1,30 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { bienAPI } from "../../api/bienAPI";
 import { BienResponseDTO, EtatBien } from "../../types";
 import { useNavigate } from "react-router-dom";
 import {
-  Plus, Search,  Eye, Trash2, Package, Database,
-  Activity, Building2, Tag, AlertTriangle
+  Plus, Search, Eye, Trash2, Package, Database,
+  Activity, Building2, Tag, AlertTriangle, Download,
+  AlertCircle, CheckCircle, Info, X
 } from "lucide-react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+
+// 1. Interface pour les notifications
+interface ToastMessage {
+  id: number;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
 
 export const BiensPage: React.FC = () => {
   const [list, setList] = useState<BienResponseDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [confirmDel, setConfirmDel] = useState<BienResponseDTO | null>(null);
+  
+  // 2. État pour gérer la liste des notifications
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
   
   const navigate = useNavigate();
 
@@ -26,10 +39,22 @@ export const BiensPage: React.FC = () => {
       setList(data);
     } catch (err) {
       console.error("Erreur lors du chargement des biens", err);
+      showNotification("Erreur lors du chargement de la liste des biens.", "error");
     } finally {
       setLoading(false);
     }
   };
+
+  // 3. Fonction pour afficher les jolies notifications
+  const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    
+    // Disparition automatique après 5 secondes
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 5000);
+  }, []);
 
   const stats = useMemo(() => {
     const total = list.length;
@@ -51,19 +76,98 @@ export const BiensPage: React.FC = () => {
     [list, q],
   );
 
+  const exporterPDF = () => {
+    const doc = new jsPDF('landscape'); 
+
+    doc.setFontSize(18);
+    doc.setTextColor(15, 23, 42); 
+    doc.text("Registre du Patrimoine - Biens", 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    const dateExtraction = new Date().toLocaleString('fr-FR');
+    doc.text(`Date d'extraction : ${dateExtraction}`, 14, 30);
+    doc.text(`Nombre de biens : ${filtered.length}`, 14, 36);
+
+    const tableColumn = ["Code", "Désignation", "Localisation", "Ministère", "Valeur (MRU)", "État"];
+    const tableRows = filtered.map(b => [
+      b.code || "N/A",
+      b.designation || "N/A",
+      b.localisation || "N/A",
+      b.ministereNom || "N/A",
+      b.valeurAcquisition ? b.valeurAcquisition.toLocaleString() : "0",
+      b.etat || "N/A"
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 45,
+      styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak' },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 50 },
+        3: { cellWidth: 50 },
+        4: { cellWidth: 35 },
+        5: { cellWidth: 25 },
+      }
+    });
+
+    doc.save(`Registre_Biens_${new Date().toISOString().split('T')[0]}.pdf`);
+    showNotification("Le fichier PDF a été généré avec succès.", "success");
+  };
+
+  // 4. Utilisation de la nouvelle notification à la place du alert()
   const handleConfirmDelete = async () => {
     if (!confirmDel) return;
     try {
       await bienAPI.supprimer(confirmDel.id);
       setConfirmDel(null);
+      showNotification(`Le bien "${confirmDel.designation}" a été supprimé avec succès.`, "success");
       chargerDonnees();
-    } catch (err) {
-      alert("Impossible de supprimer ce bien.");
+    } catch (err: any) {
+      setConfirmDel(null);
+      showNotification(
+        err.response?.data?.message || "Impossible de supprimer ce bien. Il est peut-être lié à une affectation en cours.", 
+        "error"
+      );
     }
   };
 
   return (
-    <div className="p-8 w-full bg-slate-50/50 min-h-screen">
+    <div className="p-8 w-full bg-slate-50/50 min-h-screen relative overflow-hidden">
+      
+      {/* 5. Conteneur des notifications (positionné en bas à droite comme sur l'image) */}
+      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 w-auto max-w-sm pointer-events-none">
+        {toasts.map((t) => (
+          <div key={t.id} className={`p-4 rounded-xl shadow-xl border text-sm font-medium flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300 pointer-events-auto ${
+            t.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+            t.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
+            'bg-blue-50 border-blue-200 text-blue-800'
+          }`}>
+            {t.type === 'success' && <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-emerald-600" />}
+            {t.type === 'error' && <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />}
+            {t.type === 'info' && <Info className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />}
+            
+            <span className="flex-1 leading-relaxed">{t.message}</span>
+            
+            <button 
+              onClick={() => setToasts(prev => prev.filter(toast => toast.id !== t.id))} 
+              className={`shrink-0 p-1 rounded-md transition-colors ${
+                t.type === 'success' ? 'hover:bg-emerald-100 text-emerald-600' :
+                t.type === 'error' ? 'hover:bg-red-100 text-red-600' :
+                'hover:bg-blue-100 text-blue-600'
+              }`}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+
       <div className="mx-auto max-w-7xl space-y-6">
         
         {/* Header */}
@@ -74,12 +178,21 @@ export const BiensPage: React.FC = () => {
               Gestion centralisée des actifs immobiliers et mobiliers de l'État
             </p>
           </div>
-          <button
-            onClick={() => navigate('/biens/nouveau')}
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
-          >
-            <Plus className="h-4 w-4" /> Enregistrer un Bien
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={exporterPDF}
+              disabled={loading || filtered.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4 text-slate-500" /> Exporter PDF
+            </button>
+            <button
+              onClick={() => navigate('/biens/nouveau')}
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
+            >
+              <Plus className="h-4 w-4" /> Enregistrer un Bien
+            </button>
+          </div>
         </div>
 
         {/* Stats Panel */}
@@ -171,9 +284,10 @@ export const BiensPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Confirmation Modal pour suppression */}
       {confirmDel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center">
               <div className="grid h-14 w-14 place-items-center rounded-full bg-red-100 text-red-600 mb-4">
                 <AlertTriangle className="h-7 w-7" />
@@ -182,8 +296,8 @@ export const BiensPage: React.FC = () => {
               <p className="mt-2 text-sm text-slate-500">Êtes-vous sûr de vouloir retirer <span className="font-bold">{confirmDel.designation}</span> ?</p>
             </div>
             <div className="mt-6 flex gap-3">
-              <button onClick={() => setConfirmDel(null)} className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">Annuler</button>
-              <button onClick={handleConfirmDelete} className="w-full rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700">Supprimer</button>
+              <button onClick={() => setConfirmDel(null)} className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors">Annuler</button>
+              <button onClick={handleConfirmDelete} className="w-full rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors shadow-sm">Supprimer</button>
             </div>
           </div>
         </div>
@@ -193,7 +307,13 @@ export const BiensPage: React.FC = () => {
 };
 
 function StatCard({ icon: Icon, label, value, tone }: any) {
-  const tones: any = { primary: "bg-blue-50 text-blue-600", info: "bg-sky-50 text-sky-600", secondary: "bg-purple-50 text-purple-600", success: "bg-emerald-50 text-emerald-600" };
+  const tones: any = { 
+    primary: "bg-blue-50 text-blue-600", 
+    info: "bg-sky-50 text-sky-600", 
+    secondary: "bg-purple-50 text-purple-600", 
+    success: "bg-emerald-50 text-emerald-600" 
+  };
+  
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between">
@@ -201,7 +321,9 @@ function StatCard({ icon: Icon, label, value, tone }: any) {
           <p className="text-xs font-bold uppercase tracking-wide text-gray-500">{label}</p>
           <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
         </div>
-        <div className={`grid h-10 w-10 place-items-center rounded-xl ${tones[tone]}`}><Icon className="h-5 w-5" /></div>
+        <div className={`grid h-10 w-10 place-items-center rounded-xl ${tones[tone]}`}>
+          <Icon className="h-5 w-5" />
+        </div>
       </div>
     </div>
   );

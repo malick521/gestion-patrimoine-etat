@@ -18,15 +18,15 @@ export enum StatutMaintenance {
   ANNULEE = 'ANNULEE'
 }
 
-// 🟢 تحديث هذا الملف في الـ Frontend (src/types.ts)
 export enum TypeBien {
-  IMMEUBLE = 'IMMEUBLE',         // تأكد أنها ليس IMMOBILIER
+  IMMEUBLE = 'IMMEUBLE',
   VEHICULE = 'VEHICULE',
   MOBILIER = 'MOBILIER',
   INFORMATIQUE = 'INFORMATIQUE',
   EQUIPEMENT = 'EQUIPEMENT',
   AUTRE = 'AUTRE'
 }
+
 export enum TypeMaintenance {
   PREVENTIVE = 'PREVENTIVE',
   CURATIVE = 'CURATIVE'
@@ -41,12 +41,12 @@ export enum TypeMouvement {
 export enum UserRole {
   ADMIN = 'ADMIN',
   GESTIONNAIRE = 'GESTIONNAIRE',
+  AUDITEUR = 'AUDITEUR',
   CONSULTANT = 'CONSULTANT'
 }
 
 // --- DTOS ---
 
-// Auth[cite: 3, 4]
 export interface LoginRequestDTO {
   email: string;
   motDePasse: string;
@@ -61,7 +61,6 @@ export interface LoginResponseDTO {
   role: string;
 }
 
-// User[cite: 15, 16]
 export interface UserRequestDTO {
   nom: string;
   prenom: string;
@@ -83,7 +82,6 @@ export interface UserResponseDTO {
   dateCreation: string;
 }
 
-// Bien[cite: 5, 6]
 export interface BienRequestDTO {
   code: string;
   designation: string;
@@ -120,7 +118,6 @@ export interface BienResponseDTO {
   dateModification: string;
 }
 
-// Affectation[cite: 1]
 export interface AffectationRequestDTO {
   bienId: string;
   ministereId: string;
@@ -145,7 +142,6 @@ export interface AffectationResponseDTO {
   creePar: string;
 }
 
-// Categorie[cite: 7]
 export interface CategorieRequestDTO {
   nom: string;
   code: string;
@@ -161,7 +157,6 @@ export interface CategorieResponseDTO {
   description?: string;
 }
 
-// Maintenance[cite: 8, 9]
 export interface MaintenanceRequestDTO {
   bienId: string;
   type: TypeMaintenance;
@@ -191,7 +186,6 @@ export interface MaintenanceResponseDTO {
   creeParNom: string;
 }
 
-// Ministere[cite: 11, 12]
 export interface MinistereRequestDTO {
   nom: string;
   code: string;
@@ -215,7 +209,6 @@ export interface MinistereResponseDTO {
   dateCreation: string;
 }
 
-// Mouvement[cite: 13, 14]
 export interface MouvementRequestDTO {
   bienId: string;
   type: TypeMouvement;
@@ -246,7 +239,6 @@ export interface MouvementResponseDTO {
   creeParNom: string;
 }
 
-// AuditLog[cite: 2]
 export interface AuditLogResponseDTO {
   id: string;
   userId: string;

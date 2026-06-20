@@ -17,7 +17,6 @@ export const categorieAPI = {
     const res = await axiosInstance.put<CategorieResponseDTO>(`/categories/${id}`, dto);
     return res.data;
   },
-
   supprimer: async (id: string): Promise<void> => {
     await axiosInstance.delete(`/categories/${id}`);
   }

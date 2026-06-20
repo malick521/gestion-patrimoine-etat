@@ -4,14 +4,19 @@ import { MinistereResponseDTO, MinistereRequestDTO } from "../../types";
 import {
   Plus, Search, Filter, Eye, Pencil, Trash2, X, Landmark, Database,
   Users as UsersIcon, Activity, Building2, Mail, Phone, MapPin,
-  Package, FileText, AlertTriangle, CheckCircle2,
+  Package, FileText, AlertTriangle, CheckCircle2, Download
 } from "lucide-react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export const MinisteresPage: React.FC = () => {
   // 🟢 ربط البيانات الحية من السيرفر
   const [list, setList] = useState<MinistereResponseDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // 🟢 Filtres
   const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("TOUS");
   
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState<MinistereResponseDTO | null>(null);
@@ -48,17 +53,68 @@ export const MinisteresPage: React.FC = () => {
     return { total, actifs, responsablesUniques, tauxActivite };
   }, [list]);
 
-  // معالجة البحث الديناميكي
-  const filtered = useMemo(
-    () =>
-      list.filter(
-        (m) =>
-          m.nom.toLowerCase().includes(q.toLowerCase()) ||
-          m.code.toLowerCase().includes(q.toLowerCase()) ||
-          m.responsable.toLowerCase().includes(q.toLowerCase()),
-      ),
-    [list, q],
-  );
+  // 🟢 Filtrage Combiné (Recherche + Statut)
+  const filtered = useMemo(() => {
+    return list.filter((m) => {
+      // Filtre de recherche texte
+      const matchesSearch =
+        m.nom.toLowerCase().includes(q.toLowerCase()) ||
+        m.code.toLowerCase().includes(q.toLowerCase()) ||
+        m.responsable.toLowerCase().includes(q.toLowerCase());
+
+      // Filtre par statut (Actif / Inactif)
+      const matchesStatus = 
+        statusFilter === "TOUS" ? true :
+        statusFilter === "ACTIF" ? m.actif === true :
+        m.actif === false;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [list, q, statusFilter]);
+
+  // 🟢 EXPORT PDF
+  const exporterPDF = () => {
+    const doc = new jsPDF('landscape'); 
+
+    doc.setFontSize(18);
+    doc.setTextColor(15, 23, 42); 
+    doc.text("Registre des Ministères", 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    const dateExtraction = new Date().toLocaleString('fr-FR');
+    doc.text(`Date d'extraction : ${dateExtraction}`, 14, 30);
+    doc.text(`Nombre de ministères listés : ${filtered.length}`, 14, 36);
+
+    const tableColumn = ["Code", "Nom du ministère", "Responsable", "Téléphone", "Email", "Statut"];
+    const tableRows = filtered.map(m => [
+      m.code || "N/A",
+      m.nom || "N/A",
+      m.responsable || "N/A",
+      m.telephone || "N/A",
+      m.email || "N/A",
+      m.actif ? "Actif" : "Inactif"
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 45,
+      styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak' },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 70 },
+        2: { cellWidth: 50 },
+        3: { cellWidth: 40 },
+        4: { cellWidth: 55 },
+        5: { cellWidth: 20 },
+      }
+    });
+
+    doc.save(`Registre_Ministeres_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   // التعامل مع الحذف المؤكد
   const handleConfirmDelete = async () => {
@@ -89,23 +145,32 @@ export const MinisteresPage: React.FC = () => {
   };
 
   return (
-    <div className="p-8 w-full bg-slate-50/50 min-h-screen">
+    <div className="p-8 w-full bg-slate-50/50 min-h-screen relative">
       <div className="mx-auto max-w-7xl space-y-6">
         
         {/* Header */}
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:flex sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h2 className="truncate text-2xl font-semibold tracking-tight text-slate-900">Gestion des Ministères</h2>
             <p className="mt-1 text-sm text-slate-500">
               Administration des structures gouvernementales et suivi du patrimoine affecté
             </p>
           </div>
-          <button
-            onClick={() => { setEditing(null); setOpenForm(true); }}
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
-          >
-            <Plus className="h-4 w-4" /> Nouveau Ministère
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={exporterPDF}
+              disabled={loading || filtered.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4 text-slate-500" /> Exporter PDF
+            </button>
+            <button
+              onClick={() => { setEditing(null); setOpenForm(true); }}
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
+            >
+              <Plus className="h-4 w-4" /> Nouveau Ministère
+            </button>
+          </div>
         </div>
 
         {/* Stats Panel الحقيقي المتصل بالبيانات */}
@@ -138,8 +203,10 @@ export const MinisteresPage: React.FC = () => {
 
         {/* Table panel */}
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 p-3">
-            <div className="relative min-w-0 flex-1">
+          
+          {/* BARRE DE RECHERCHE ET FILTRES HARMONISÉE */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 p-4">
+            <div className="relative min-w-0 flex-1 max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 value={q}
@@ -148,21 +215,31 @@ export const MinisteresPage: React.FC = () => {
                 className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
               />
             </div>
-            <button className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
-              <Filter className="h-4 w-4" /> Filtrer
-            </button>
+            
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-400" />
+              <select 
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-slate-900"
+              >
+                <option value="TOUS">Tous les statuts</option>
+                <option value="ACTIF">Actifs uniquement</option>
+                <option value="INACTIF">Inactifs uniquement</option>
+              </select>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm divide-y divide-gray-200">
               <thead className="bg-gray-50 font-bold text-gray-700">
                 <tr className="text-left text-xs uppercase tracking-wide">
-                  <th className="px-5 py-3">Code</th>
-                  <th className="px-5 py-3">Nom du ministère</th>
-                  <th className="px-5 py-3">Responsable</th>
-                  <th className="px-5 py-3 text-right">Statut</th>
-                  <th className="px-5 py-3">Date de Création</th>
-                  <th className="w-32 px-5 py-3 text-center">Actions</th>
+                  <th className="px-5 py-3.5">Code</th>
+                  <th className="px-5 py-3.5">Nom du ministère</th>
+                  <th className="px-5 py-3.5">Responsable</th>
+                  <th className="px-5 py-3.5 text-right">Statut</th>
+                  <th className="px-5 py-3.5">Date de Création</th>
+                  <th className="w-32 px-5 py-3.5 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
@@ -290,7 +367,7 @@ function IconBtn({ children, onClick, title, tone }: { children: React.ReactNode
 
 /* ---------- مودال الفورم المطور ---------- */
 
-const inputCls = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition";
+const inputCls = "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition";
 
 function MinistryForm({ initial, onClose, onSave }: { initial: MinistereResponseDTO | null; onClose: () => void; onSave: (dto: MinistereRequestDTO) => void }) {
   const [nom, setNom] = useState(initial?.nom || "");
@@ -342,10 +419,10 @@ function MinistryForm({ initial, onClose, onSave }: { initial: MinistereResponse
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4 rounded-b-2xl">
-          <button type="button" onClick={onClose} className="rounded-lg bg-white border border-gray-300 px-5 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 transition">
+          <button type="button" onClick={onClose} className="rounded-xl bg-white border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 transition">
             Annuler
           </button>
-          <button type="submit" className="rounded-lg bg-slate-900 px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800">
+          <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800">
             Enregistrer
           </button>
         </div>

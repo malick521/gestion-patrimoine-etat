@@ -11,8 +11,10 @@ import {
 import { 
   Wrench, Search, Filter, Eye, CheckCircle, XCircle, Trash2, 
   Plus, Calendar, DollarSign, FileText, User, Activity, 
-  Settings, Clock, X, AlertTriangle, AlertCircle, CheckCircle2, Info
+  Settings, Clock, X, AlertTriangle, AlertCircle, CheckCircle2, Info, Download
 } from 'lucide-react';
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export const MaintenancesPage: React.FC = () => {
   const [maintenances, setMaintenances] = useState<MaintenanceResponseDTO[]>([]);
@@ -157,6 +159,51 @@ export const MaintenancesPage: React.FC = () => {
     });
   }, [maintenances, searchQuery, statusFilter]);
 
+  // --- EXPORT PDF ---
+  const exporterPDF = () => {
+    const doc = new jsPDF('landscape'); 
+
+    doc.setFontSize(18);
+    doc.setTextColor(15, 23, 42); 
+    doc.text("Registre des Interventions Techniques", 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    const dateExtraction = new Date().toLocaleString('fr-FR');
+    doc.text(`Date d'extraction : ${dateExtraction}`, 14, 30);
+    doc.text(`Nombre d'interventions : ${filteredMaintenances.length}`, 14, 36);
+
+    const tableColumn = ["Bien Public", "Type Opération", "Prestataire", "Date Prévue", "Montant (MRU)", "Statut"];
+    const tableRows = filteredMaintenances.map(m => [
+      m.bienDesignation || "N/A",
+      m.type || "N/A",
+      m.prestataire || "N/A",
+      m.dateIntervention ? new Date(m.dateIntervention).toLocaleDateString("fr-FR") : "N/A",
+      m.cout ? m.cout.toLocaleString() : "0",
+      m.statut || "N/A"
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 45,
+      styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak' },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { cellWidth: 35 },
+        2: { cellWidth: 50 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 35 },
+        5: { cellWidth: 30 },
+      }
+    });
+
+    doc.save(`Registre_Maintenances_${new Date().toISOString().split('T')[0]}.pdf`);
+    showNotification("Le fichier PDF a été généré avec succès.", "success");
+  };
+
   return (
     <div className="p-8 w-full bg-slate-50/50 min-h-screen relative">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -168,12 +215,21 @@ export const MaintenancesPage: React.FC = () => {
               Planification, suivi budgétaire et historique de maintenance préventive et curative des actifs
             </p>
           </div>
-          <button
-            onClick={() => setOpenForm(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
-          >
-            <Plus className="h-4 w-4" /> Nouvelle Intervention
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={exporterPDF}
+              disabled={loading || filteredMaintenances.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4 text-slate-500" /> Exporter PDF
+            </button>
+            <button
+              onClick={() => setOpenForm(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
+            >
+              <Plus className="h-4 w-4" /> Nouvelle Intervention
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

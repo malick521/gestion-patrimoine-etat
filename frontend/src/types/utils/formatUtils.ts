@@ -31,3 +31,9 @@ export const formatDateTime = (dateStr: string | null | undefined): string => {
 export const toISODate = (date: Date): string => {
   return date.toISOString().split('T')[0];
 };
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  GESTIONNAIRE = 'GESTIONNAIRE',
+  AUDITEUR = 'AUDITEUR', // 👈 Rôle ajouté pour correspondre au backend
+  CONSULTANT = 'CONSULTANT'
+}

@@ -20,7 +20,7 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    // POST /api/users
+    // POST /api/users -> Enregistrement d'un nouvel agent par l'ADMIN
     @PostMapping
     public ResponseEntity<UserResponseDTO> creer(
             @RequestBody @Valid UserRequestDTO dto) {

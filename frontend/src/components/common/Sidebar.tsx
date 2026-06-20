@@ -30,8 +30,8 @@ export const Sidebar: React.FC = () => {
             <ShieldAlert className="w-6 h-6 text-[#11224E]" />
           </div>
           <div>
-            <h2 className="font-bold text-white text-base leading-tight">Patrimoine</h2>
-            <p className="text-xs text-slate-400 font-medium">État · GovAsset</p>
+            <h2 className="font-bold text-white text-base leading-tight">GovAsset</h2>
+            <p className="text-xs text-slate-400 font-medium">Gestion du Patrimoine Public</p>
           </div>
         </div>
 
@@ -64,11 +64,7 @@ export const Sidebar: React.FC = () => {
         </nav>
       </div>
 
-      {/* Pied de page de conformité */}
-      <div className="bg-[#1E3A75] p-4 rounded-2xl border border-sky-950/20">
-        <h4 className="text-xs font-bold text-white tracking-wide">Conformité ISO</h4>
-        <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Audit certifié — v2.4.1</p>
-      </div>
+
 
     </div>
   );

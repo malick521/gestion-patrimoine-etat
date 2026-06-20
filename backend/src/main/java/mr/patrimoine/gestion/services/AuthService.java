@@ -38,21 +38,17 @@ public class AuthService {
     // ==================== LOGIN ====================
     public LoginResponseDTO login(LoginRequestDTO dto) {
 
-        // 1 — L'email existe-t-il ?
         UserEntity user = userRepository.findByEmail(dto.getEmail())
                 .orElseThrow(() -> new BusinessException("Email ou mot de passe incorrect"));
 
-        // 2 — Le compte est-il actif ?
         if (!user.isActif()) {
             throw new BusinessException("Compte désactivé, contactez l'administrateur");
         }
 
-        // 3 — Le mot de passe est-il correct ?
         if (!passwordEncoder.matches(dto.getMotDePasse(), user.getMotDePasse())) {
             throw new BusinessException("Email ou mot de passe incorrect");
         }
 
-        // 4 — Mettre à jour la dernière connexion
         user.setDerniereConnexion(LocalDateTime.now());
         userRepository.save(user);
 
@@ -60,14 +56,12 @@ public class AuthService {
                 "CONNEXION", "User", user.getId(),
                 "Connexion de " + user.getEmail());
 
-        // 5 — Générer le token JWT
         String token = jwtUtil.generateToken(
                 user.getEmail(),
                 user.getRole().name(),
                 user.getId()
         );
 
-        // 6 — Retourner la réponse avec le token
         return LoginResponseDTO.builder()
                 .token(token)
                 .id(user.getId())
@@ -78,35 +72,26 @@ public class AuthService {
                 .build();
     }
 
-  // ==================== REGISTER ====================
+    // ==================== REGISTER ====================
     public UserResponseDTO register(UserRequestDTO dto) {
 
-        // 1 — L'email est-il déjà pris ?
         if (userRepository.existsByEmail(dto.getEmail())) {
             throw new BusinessException("Email déjà utilisé");
         }
 
-        // 2 — Le ministère existe-t-il ? (Désactivé temporairement pour le premier ADMIN)
-        /*
-        var ministere = ministereRepository.findById(dto.getMinistereId())
-                .orElseThrow(() -> new ResourceNotFoundException("Ministere", dto.getMinistereId()));
-        */
-
-        // 3 — Construire l'entité user
         UserEntity user = UserEntity.builder()
                 .nom(dto.getNom())
                 .prenom(dto.getPrenom())
                 .email(dto.getEmail())
                 .motDePasse(passwordEncoder.encode(dto.getMotDePasse()))
                 .ministereId(dto.getMinistereId())
-                .role(dto.getRole() != null ? dto.getRole() : UserRole.ADMIN) // جعلناه ADMIN افتراضياً لتصبح أنت المدير!
+                .role(dto.getRole() != null ? dto.getRole() : UserRole.ADMIN)
                 .actif(true)
                 .dateCreation(LocalDateTime.now())
                 .build();
 
         UserEntity saved = userRepository.save(user);
 
-        // 4 — Retourner la réponse
         return UserResponseDTO.builder()
                 .id(saved.getId())
                 .nom(saved.getNom())
@@ -114,9 +99,19 @@ public class AuthService {
                 .email(saved.getEmail())
                 .userRole(saved.getRole())
                 .ministereId(saved.getMinistereId())
-                .ministereNom("Ministère par défaut") // اسم وهمي مؤقت
+                .ministereNom("Ministère par défaut")
                 .actif(saved.isActif())
                 .dateCreation(saved.getDateCreation())
                 .build();
+    }
+
+    // ==================== LOGOUT (NOUVEAU) ====================
+    public void logout(String email) {
+        UserEntity user = userRepository.findByEmail(email).orElse(null);
+        if (user != null) {
+            auditLogService.log(user.getId(), user.getEmail(),
+                    "DECONNEXION", "User", user.getId(),
+                    "Déconnexion de " + user.getEmail());
+        }
     }
 }

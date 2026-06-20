@@ -8,8 +8,10 @@ import {
 } from "../../types";
 import {
   Search, Filter, Eye, X, Activity, Package, Building2,
-  Calendar, FileText, AlertTriangle, ArrowLeftRight, Landmark, AlignLeft, Scale
+  Calendar, FileText, AlertTriangle, ArrowLeftRight, Landmark, AlignLeft, Scale, Download
 } from "lucide-react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export const MouvementsPage: React.FC = () => {
   // 🟢 Données
@@ -17,7 +19,10 @@ export const MouvementsPage: React.FC = () => {
   const [biens, setBiens] = useState<BienResponseDTO[]>([]);
   const [ministeres, setMinisteres] = useState<MinistereResponseDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState("");
+  
+  // 🟢 Filtres harmonisés
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("TOUS");
   
   // 🟢 États des fenêtres (Modals / Drawers)
   const [openForm, setOpenForm] = useState(false);
@@ -45,32 +50,70 @@ export const MouvementsPage: React.FC = () => {
     }
   };
 
-  // 🟢 Calcul des statistiques dynamiques fondées sur vos vrais types
+  // 🟢 Calcul des statistiques dynamiques
   const stats = useMemo(() => {
-    const total = list.length;
-    const affectations = list.filter((m) => m.type === TypeMouvement.AFFECTATION).length;
-    const transferts = list.filter((m) => m.type === TypeMouvement.TRANSFERT).length;
-    const reformes = list.filter((m) => m.type === TypeMouvement.REFORME).length;
-    
-    const ilYa30Jours = new Date();
-    ilYa30Jours.setDate(ilYa30Jours.getDate() - 30);
-    const recents = list.filter(m => new Date(m.dateMouvement) >= ilYa30Jours).length;
+    const total = Array.isArray(list) ? list.length : 0;
+    const affectations = Array.isArray(list) ? list.filter((m) => m.type === TypeMouvement.AFFECTATION).length : 0;
+    const transferts = Array.isArray(list) ? list.filter((m) => m.type === TypeMouvement.TRANSFERT).length : 0;
+    const reformes = Array.isArray(list) ? list.filter((m) => m.type === TypeMouvement.REFORME).length : 0;
 
-    return { total, affectations, transferts, reformes, recents };
+    return { total, affectations, transferts, reformes };
   }, [list]);
 
-  // 🟢 Filtrage
-  const filtered = useMemo(
-    () =>
-      list.filter(
-        (m) =>
-          m.bienDesignation?.toLowerCase().includes(q.toLowerCase()) ||
-          m.type?.toLowerCase().includes(q.toLowerCase()) ||
-          m.ministereSourceNom?.toLowerCase().includes(q.toLowerCase()) ||
-          m.ministereDestinationNom?.toLowerCase().includes(q.toLowerCase())
-      ),
-    [list, q],
-  );
+  // 🟢 Filtrage mis à jour (Recherche + Select)
+  const filtered = useMemo(() => {
+    if (!Array.isArray(list)) return [];
+    return list.filter(m => {
+      const searchStr = `${m.bienDesignation || ''} ${m.ministereSourceNom || ''} ${m.ministereDestinationNom || ''}`.toLowerCase();
+      const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
+      
+      const matchesType = typeFilter === "TOUS" || m.type === typeFilter;
+      
+      return matchesSearch && matchesType;
+    });
+  }, [list, searchQuery, typeFilter]);
+
+  // 🟢 EXPORT PDF
+  const exporterPDF = () => {
+    const doc = new jsPDF('landscape'); 
+
+    doc.setFontSize(18);
+    doc.setTextColor(15, 23, 42); 
+    doc.text("Historique des Mouvements", 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    const dateExtraction = new Date().toLocaleString('fr-FR');
+    doc.text(`Date d'extraction : ${dateExtraction}`, 14, 30);
+    doc.text(`Nombre d'opérations listées : ${filtered.length}`, 14, 36);
+
+    const tableColumn = ["Date", "Désignation du Bien", "Type", "Provenance", "Destination"];
+    const tableRows = filtered.map(m => [
+      new Date(m.dateMouvement).toLocaleDateString("fr-FR"),
+      m.bienDesignation || "N/A",
+      m.type || "N/A",
+      m.ministereSourceNom || "Stock / Inventaire",
+      m.ministereDestinationNom || "Sortie Définitive"
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 45,
+      styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak' },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 80 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 65 },
+        4: { cellWidth: 65 },
+      }
+    });
+
+    doc.save(`Historique_Mouvements_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   const handleSaveForm = async (dto: MouvementRequestDTO) => {
     try {
@@ -87,19 +130,28 @@ export const MouvementsPage: React.FC = () => {
       <div className="mx-auto max-w-7xl space-y-6">
         
         {/* Header */}
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:flex sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h2 className="truncate text-2xl font-semibold tracking-tight text-slate-900">Historique des Mouvements</h2>
             <p className="mt-1 text-sm text-slate-500">
               Traçabilité complète des flux, cessions, réformes et affectations de matériels
             </p>
           </div>
-          <button
-            onClick={() => setOpenForm(true)}
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
-          >
-            <ArrowLeftRight className="h-4 w-4" /> Enregistrer un Flux
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={exporterPDF}
+              disabled={loading || filtered.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4 text-slate-500" /> Exporter PDF
+            </button>
+            <button
+              onClick={() => setOpenForm(true)}
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
+            >
+              <ArrowLeftRight className="h-4 w-4" /> Enregistrer un Flux
+            </button>
+          </div>
         </div>
 
         {/* Stats Panel */}
@@ -112,31 +164,44 @@ export const MouvementsPage: React.FC = () => {
 
         {/* Table panel */}
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 p-3">
-            <div className="relative min-w-0 flex-1">
+          
+          {/* NOUVELLE BARRE DE FILTRES HARMONISÉE */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 p-4">
+            <div className="relative min-w-0 flex-1 max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Rechercher par bien, type ou ministère..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Rechercher par bien, ministère..."
                 className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
               />
             </div>
-            <button className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
-              <Filter className="h-4 w-4" /> Filtrer
-            </button>
+            
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-400" />
+              <select 
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-slate-900"
+              >
+                <option value="TOUS">Tous les types</option>
+                {Object.values(TypeMouvement).map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm divide-y divide-gray-200">
               <thead className="bg-gray-50 font-bold text-gray-700">
                 <tr className="text-left text-xs uppercase tracking-wide">
-                  <th className="px-5 py-3">Date Opération</th>
-                  <th className="px-5 py-3">Désignation Bien</th>
-                  <th className="px-5 py-3 text-center">Type</th>
-                  <th className="px-5 py-3">Provenance (Source)</th>
-                  <th className="px-5 py-3">Cessionnaire (Destination)</th>
-                  <th className="w-20 px-5 py-3 text-center">Actions</th>
+                  <th className="px-5 py-3.5">Date Opération</th>
+                  <th className="px-5 py-3.5">Désignation Bien</th>
+                  <th className="px-5 py-3.5 text-center">Type</th>
+                  <th className="px-5 py-3.5">Provenance (Source)</th>
+                  <th className="px-5 py-3.5">Cessionnaire (Destination)</th>
+                  <th className="w-20 px-5 py-3.5 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
@@ -268,7 +333,7 @@ function TypeMouvementBadge({ type }: { type: TypeMouvement }) {
 
 /* ---------- MODAL FORMULAIRE ---------- */
 
-const inputCls = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition";
+const inputCls = "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition";
 
 function MouvementForm({ biens, ministeres, onClose, onSave }: { 
   biens: BienResponseDTO[];
@@ -281,7 +346,6 @@ function MouvementForm({ biens, ministeres, onClose, onSave }: {
     motif: '', observations: '', raisonReforme: '', valeurResiduelle: 0
   });
 
-  // Logique conditionnelle basée uniquement sur vos 3 types de mouvements réels
   const isReforme = dto.type === TypeMouvement.REFORME;
   const needsSource = dto.type === TypeMouvement.TRANSFERT || dto.type === TypeMouvement.REFORME;
   const needsDestination = dto.type === TypeMouvement.TRANSFERT || dto.type === TypeMouvement.AFFECTATION;
@@ -356,8 +420,8 @@ function MouvementForm({ biens, ministeres, onClose, onSave }: {
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4 rounded-b-2xl">
-          <button type="button" onClick={onClose} className="rounded-lg bg-white border border-gray-300 px-5 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">Annuler</button>
-          <button type="submit" className="rounded-lg bg-slate-900 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-slate-800 flex items-center gap-2"><FileText className="h-4 w-4"/>Valider l'opération</button>
+          <button type="button" onClick={onClose} className="rounded-xl bg-white border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">Annuler</button>
+          <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-slate-800 flex items-center gap-2"><FileText className="h-4 w-4"/>Valider l'opération</button>
         </div>
       </form>
     </div>
