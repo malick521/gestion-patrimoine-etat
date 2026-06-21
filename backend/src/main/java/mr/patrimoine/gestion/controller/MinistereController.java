@@ -7,7 +7,9 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -81,5 +83,24 @@ public class MinistereController {
     public ResponseEntity<Void> supprimer(@PathVariable String id) {
         ministereService.supprimer(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ==================== UPLOAD PDF (ADMIN UNIQUEMENT) ====================
+    @PostMapping("/{id}/upload-pdf")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> uploadPDF(
+            @PathVariable String id,
+            @RequestParam("file") MultipartFile file) {
+        
+        if (file.isEmpty() || !file.getContentType().equals("application/pdf")) {
+            return ResponseEntity.badRequest().body("Veuillez fournir un fichier PDF valide.");
+        }
+
+        try {
+            ministereService.sauvegarderFichierPdf(id, file);
+            return ResponseEntity.ok("Fichier PDF inséré avec succès dans la base de données.");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Erreur lors de l'enregistrement du PDF : " + e.getMessage());
+        }
     }
 }

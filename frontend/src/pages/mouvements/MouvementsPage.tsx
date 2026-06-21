@@ -2,18 +2,27 @@ import React, { useMemo, useState, useEffect } from "react";
 import { mouvementAPI } from "../../api/mouvementAPI";
 import { bienAPI } from "../../api/bienAPI";
 import { ministereAPI } from "../../api/ministereAPI";
+import { useAuth } from "../../context/AuthContext";
+import { hasPermission, AccessDeniedModal } from "../../components/AccessControl";
 import { 
   MouvementResponseDTO, MouvementRequestDTO, TypeMouvement,
   BienResponseDTO, MinistereResponseDTO
 } from "../../types";
 import {
   Search, Filter, Eye, X, Activity, Package, Building2,
-  Calendar, FileText, AlertTriangle, ArrowLeftRight, Landmark, AlignLeft, Scale, Download
+  Calendar, FileText, AlertTriangle, ArrowLeftRight, Landmark, AlignLeft, Scale, Download, CheckCircle2
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export const MouvementsPage: React.FC = () => {
+  // 🔐 CONNEXION AU CONTEXTE D'AUTHENTIFICATION
+  const { user } = useAuth();
+  const userRole = user?.role || 'CONSULTANT';
+
+  // 🔐 ÉVALUATION DES DROITS
+  const canCreate = hasPermission(userRole, 'mouvements', 'CREATE');
+
   // 🟢 Données
   const [list, setList] = useState<MouvementResponseDTO[]>([]);
   const [biens, setBiens] = useState<BienResponseDTO[]>([]);
@@ -24,9 +33,19 @@ export const MouvementsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("TOUS");
   
-  // 🟢 États des fenêtres (Modals / Drawers)
+  // 🟢 États des fenêtres et alertes
   const [openForm, setOpenForm] = useState(false);
   const [details, setDetails] = useState<MouvementResponseDTO | null>(null);
+  const [deniedAction, setDeniedAction] = useState<string | null>(null);
+  
+  // 🟢 État pour les notifications (Toasts)
+  const [toast, setToast] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  // Fonction pour afficher une notification temporaire
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000); // Disparaît après 4 secondes
+  };
 
   useEffect(() => {
     chargerDonnees();
@@ -45,12 +64,12 @@ export const MouvementsPage: React.FC = () => {
       setMinisteres(minData);
     } catch (err) {
       console.error("Erreur lors du chargement des données", err);
+      showToast("error", "Impossible de charger les données. Vérifiez votre connexion.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 🟢 Calcul des statistiques dynamiques
   const stats = useMemo(() => {
     const total = Array.isArray(list) ? list.length : 0;
     const affectations = Array.isArray(list) ? list.filter((m) => m.type === TypeMouvement.AFFECTATION).length : 0;
@@ -60,31 +79,25 @@ export const MouvementsPage: React.FC = () => {
     return { total, affectations, transferts, reformes };
   }, [list]);
 
-  // 🟢 Filtrage mis à jour (Recherche + Select)
   const filtered = useMemo(() => {
     if (!Array.isArray(list)) return [];
     return list.filter(m => {
       const searchStr = `${m.bienDesignation || ''} ${m.ministereSourceNom || ''} ${m.ministereDestinationNom || ''}`.toLowerCase();
       const matchesSearch = searchStr.includes(searchQuery.toLowerCase());
-      
       const matchesType = typeFilter === "TOUS" || m.type === typeFilter;
-      
       return matchesSearch && matchesType;
     });
   }, [list, searchQuery, typeFilter]);
 
-  // 🟢 EXPORT PDF
   const exporterPDF = () => {
     const doc = new jsPDF('landscape'); 
-
     doc.setFontSize(18);
     doc.setTextColor(15, 23, 42); 
     doc.text("Historique des Mouvements", 14, 22);
     
     doc.setFontSize(10);
     doc.setTextColor(100);
-    const dateExtraction = new Date().toLocaleString('fr-FR');
-    doc.text(`Date d'extraction : ${dateExtraction}`, 14, 30);
+    doc.text(`Date d'extraction : ${new Date().toLocaleString('fr-FR')}`, 14, 30);
     doc.text(`Nombre d'opérations listées : ${filtered.length}`, 14, 36);
 
     const tableColumn = ["Date", "Désignation du Bien", "Type", "Provenance", "Destination"];
@@ -103,13 +116,6 @@ export const MouvementsPage: React.FC = () => {
       styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak' },
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 80 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 65 },
-        4: { cellWidth: 65 },
-      }
     });
 
     doc.save(`Historique_Mouvements_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -119,14 +125,15 @@ export const MouvementsPage: React.FC = () => {
     try {
       await mouvementAPI.creer(dto);
       setOpenForm(false);
+      showToast("success", "Le mouvement a été enregistré avec succès.");
       chargerDonnees();
     } catch (err) {
-      alert("Erreur lors de l'enregistrement du mouvement.");
+      showToast("error", "Une erreur est survenue lors de l'enregistrement du mouvement.");
     }
   };
 
   return (
-    <div className="p-8 w-full bg-slate-50/50 min-h-screen">
+    <div className="p-8 w-full bg-slate-50/50 min-h-screen relative overflow-hidden">
       <div className="mx-auto max-w-7xl space-y-6">
         
         {/* Header */}
@@ -145,8 +152,16 @@ export const MouvementsPage: React.FC = () => {
             >
               <Download className="h-4 w-4 text-slate-500" /> Exporter PDF
             </button>
+            
+            {/* 🔐 BOUTON PROTÉGÉ */}
             <button
-              onClick={() => setOpenForm(true)}
+              onClick={() => {
+                if (!canCreate) {
+                  setDeniedAction("enregistrer un nouveau flux de matériel");
+                } else {
+                  setOpenForm(true);
+                }
+              }}
               className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
             >
               <ArrowLeftRight className="h-4 w-4" /> Enregistrer un Flux
@@ -164,8 +179,6 @@ export const MouvementsPage: React.FC = () => {
 
         {/* Table panel */}
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-          
-          {/* NOUVELLE BARRE DE FILTRES HARMONISÉE */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 p-4">
             <div className="relative min-w-0 flex-1 max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -269,7 +282,7 @@ export const MouvementsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal de Création */}
+      {/* Modals & Composants globaux */}
       {openForm && (
         <MouvementForm
           biens={biens}
@@ -278,9 +291,25 @@ export const MouvementsPage: React.FC = () => {
           onSave={handleSaveForm}
         />
       )}
-
-      {/* Slide-over Panel */}
       {details && <DetailsPanel m={details} onClose={() => setDetails(null)} />}
+      
+      {/* Modale Accès Refusé */}
+      {deniedAction && (
+        <AccessDeniedModal 
+          actionLabel={deniedAction} 
+          onClose={() => setDeniedAction(null)} 
+        />
+      )}
+
+      {/* Toast Notification (Remplace les alerts) */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-4 rounded-xl shadow-xl border animate-fade-in ${
+          toast.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <AlertTriangle className="h-5 w-5 text-red-600" />}
+          <p className="text-sm font-bold">{toast.message}</p>
+        </div>
+      )}
 
     </div>
   );
@@ -294,7 +323,6 @@ function StatCard({ icon: Icon, label, value, tone }: { icon: any; label: string
     info: "bg-sky-50 text-sky-600",
     success: "bg-emerald-50 text-emerald-600",
     danger: "bg-red-50 text-red-600",
-    secondary: "bg-purple-50 text-purple-600",
   };
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
@@ -400,13 +428,13 @@ function MouvementForm({ biens, ministeres, onClose, onSave }: {
           )}
 
           <Field label="Motif de l'opération" full>
-            <input type="text" className={inputCls} placeholder="ex: Réaffectation de service, Fin de déploiement..." onChange={e => setDto({...dto, motif: e.target.value})} />
+            <input required type="text" className={inputCls} placeholder="ex: Réaffectation de service, Fin de déploiement..." onChange={e => setDto({...dto, motif: e.target.value})} />
           </Field>
 
           {isReforme && (
             <>
               <Field label="Raison de la réforme (Si applicable)" full>
-                <input type="text" className={inputCls} placeholder="ex: Obsolescence technique, Matériel vétuste..." onChange={e => setDto({...dto, raisonReforme: e.target.value})} />
+                <input required type="text" className={inputCls} placeholder="ex: Obsolescence technique, Matériel vétuste..." onChange={e => setDto({...dto, raisonReforme: e.target.value})} />
               </Field>
               <Field label="Valeur Résiduelle Estimée (MRU)">
                 <input type="number" className={inputCls} onChange={e => setDto({...dto, valeurResiduelle: Number(e.target.value)})} />
@@ -428,7 +456,7 @@ function MouvementForm({ biens, ministeres, onClose, onSave }: {
   );
 }
 
-/* ---------- DETAILS PANEL (SLIDE-OVER DRAWERS) ---------- */
+/* ---------- DETAILS PANEL ---------- */
 
 function DetailsPanel({ m, onClose }: { m: MouvementResponseDTO; onClose: () => void }) {
   return (

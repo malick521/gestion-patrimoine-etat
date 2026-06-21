@@ -16,6 +16,7 @@ public class MinistereEntity {
 
     @Id
     private String id;
+    private byte[] fichierPdf;
 
     @NotBlank
     private String nom;

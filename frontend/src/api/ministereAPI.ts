@@ -18,8 +18,19 @@ export const ministereAPI = {
     const res = await axiosInstance.put<MinistereResponseDTO>(`/ministeres/${id}`, dto);
     return res.data;
   },
-  // 🟢 إضافة دالة الحذف الفعلي
   supprimer: async (id: string): Promise<void> => {
     await axiosInstance.delete(`/ministeres/${id}`);
+  },
+  
+  // 🟢 NOUVELLE FONCTION : Envoi du PDF (Nécessite FormData)
+  uploadPDF: async (id: string, file: File): Promise<void> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    await axiosInstance.post(`/ministeres/${id}/upload-pdf`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
   }
 };

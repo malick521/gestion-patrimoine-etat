@@ -29,10 +29,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 1. إعدادات الـ CORS لضمان قبول طلبات المتصفح المحلية
+                // 1. configuration CORS
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration configuration = new CorsConfiguration();
-                    // السماح للمنافذ المحتملة للـ React (Vite = 5173, Create-React-App = 3000)
                     configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
                     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
                     configuration.setAllowedHeaders(List.of("*"));
@@ -45,54 +44,52 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
 
-                        // ⭐ السماح لجميع طلبات OPTIONS (Preflight) بالمرور لتجنب خطأ CORS المضلل
+                        // ⭐ OPTIONS (Preflight) libre d'accès
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // ===== PUBLIQUE =====
                         .requestMatchers("/api/auth/**").permitAll()
 
                         // ===== USERS =====
-                        .requestMatchers(HttpMethod.GET, "/api/users/**").hasAnyRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/users/**").hasRole("ADMIN")
+                        .requestMatchers("/api/users/**").hasRole("ADMIN")
 
                         // ===== MINISTERES =====
-                        .requestMatchers(HttpMethod.GET, "/api/ministeres/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/ministeres/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/ministeres/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/ministeres/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/ministeres/**").hasRole("ADMIN")
+                        // Permettre à tout le monde connecté de voir les ministères
+                        .requestMatchers(HttpMethod.GET, "/api/ministeres/**").hasAnyRole("ADMIN", "GESTIONNAIRE", "AUDITEUR", "CONSULTANT")
+                        .requestMatchers("/api/ministeres/**").hasRole("ADMIN")
 
                         // ===== CATEGORIES =====
-                        .requestMatchers(HttpMethod.GET, "/api/categories/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
+                        // Permettre à tout le monde connecté de voir les catégories
+                        .requestMatchers(HttpMethod.GET, "/api/categories/**").hasAnyRole("ADMIN", "GESTIONNAIRE", "AUDITEUR", "CONSULTANT")
+                        // 🟢 CORRECTION SYNTAXE : Insertion de hasAnyRole à la place de hasRole
+                        .requestMatchers(HttpMethod.POST, "/api/categories/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
+                        .requestMatchers("/api/categories/**").hasRole("ADMIN")
 
                         // ===== BIENS =====
-                        .requestMatchers(HttpMethod.GET, "/api/biens/**").authenticated()
+                        // 🟢 LOGIQUE : L'Auditeur et le Consultant doivent pouvoir VOIR les biens
+                        .requestMatchers(HttpMethod.GET, "/api/biens/**").hasAnyRole("ADMIN", "GESTIONNAIRE", "AUDITEUR", "CONSULTANT")
                         .requestMatchers(HttpMethod.POST, "/api/biens/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
                         .requestMatchers(HttpMethod.PUT, "/api/biens/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
                         .requestMatchers(HttpMethod.PATCH, "/api/biens/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
                         .requestMatchers(HttpMethod.DELETE, "/api/biens/**").hasRole("ADMIN")
 
                         // ===== AFFECTATIONS =====
-                        .requestMatchers(HttpMethod.GET, "/api/affectations/**").hasAnyRole("ADMIN", "GESTIONNAIRE", "AUDITEUR")
+                        .requestMatchers(HttpMethod.GET, "/api/affectations/**").hasAnyRole("ADMIN", "GESTIONNAIRE", "AUDITEUR", "CONSULTANT")
                         .requestMatchers(HttpMethod.POST, "/api/affectations/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
                         .requestMatchers(HttpMethod.PATCH, "/api/affectations/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
                         .requestMatchers(HttpMethod.DELETE, "/api/affectations/**").hasRole("ADMIN")
 
                         // ===== MAINTENANCES =====
+                        // Masqué pour le consultant simple (données financières/techniques)
                         .requestMatchers(HttpMethod.GET, "/api/maintenances/**").hasAnyRole("ADMIN", "GESTIONNAIRE", "AUDITEUR")
                         .requestMatchers(HttpMethod.POST, "/api/maintenances/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
                         .requestMatchers(HttpMethod.PATCH, "/api/maintenances/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
                         .requestMatchers(HttpMethod.DELETE, "/api/maintenances/**").hasRole("ADMIN")
 
                         // ===== MOUVEMENTS =====
-                        .requestMatchers(HttpMethod.GET, "/api/mouvements/**").hasAnyRole("ADMIN", "GESTIONNAIRE", "AUDITEUR")
+                        .requestMatchers(HttpMethod.GET, "/api/mouvements/**").hasAnyRole("ADMIN", "GESTIONNAIRE", "AUDITEUR", "CONSULTANT")
                         .requestMatchers(HttpMethod.POST, "/api/mouvements/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
+                        .requestMatchers("/api/mouvements/**").hasRole("ADMIN") // Bloque PUT/DELETE pour tout le monde sauf ADMIN
 
                         // ===== AUDIT LOGS =====
                         .requestMatchers("/api/audit-logs/**").hasAnyRole("ADMIN", "AUDITEUR")

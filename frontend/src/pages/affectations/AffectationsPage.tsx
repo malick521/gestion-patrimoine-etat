@@ -2,10 +2,13 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { affectationAPI } from '../../api/affectationAPI';
 import axiosInstance from '../../api/axiosConfig';
 import { AffectationResponseDTO, AffectationRequestDTO } from '../../types';
+import { useAuth } from '../../context/AuthContext';
+import { hasPermission, AccessDeniedModal } from '../../components/AccessControl';
 import { 
   Handshake, Search, Filter, Eye, CheckCircle, Trash2, 
-  Plus, Calendar, Building, FileText, User, Activity, 
-  Settings, Clock, X, AlertTriangle, AlertCircle, CheckCircle2, Info, Building2, Download
+  Plus, Calendar, Building, FileText, X, AlertTriangle, 
+  AlertCircle, CheckCircle2, Info, Building2, Download,
+  Activity, Clock // <-- Ils sont ajoutés ici !
 } from 'lucide-react';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -28,6 +31,15 @@ const ministereAPI = {
 };
 
 export const AffectationsPage: React.FC = () => {
+  // 🔐 1. CONNEXION AU CONTEXTE D'AUTHENTIFICATION
+  const { user } = useAuth();
+  const userRole = user?.role || 'CONSULTANT';
+
+  // 🔐 2. ÉVALUATION DES DROITS SELON LA MATRICE
+  const canCreate = hasPermission(userRole, 'affectations', 'CREATE');
+  const canUpdate = hasPermission(userRole, 'affectations', 'UPDATE');
+  const canDelete = hasPermission(userRole, 'affectations', 'DELETE');
+
   const [affectations, setAffectations] = useState<AffectationResponseDTO[]>([]);
   const [biensDisponibles, setBiensDisponibles] = useState<MiniBien[]>([]);
   const [ministeres, setMinisteres] = useState<MiniMinistere[]>([]);
@@ -40,6 +52,7 @@ export const AffectationsPage: React.FC = () => {
   // UI States
   const [openForm, setOpenForm] = useState<boolean>(false);
   const [selectedDetail, setSelectedDetail] = useState<AffectationResponseDTO | null>(null);
+  const [deniedAction, setDeniedAction] = useState<string | null>(null);
 
   // Alertes UI
   const [notification, setNotification] = useState<{show: boolean, message: string, type: 'success' | 'error' | 'info'}>({ show: false, message: '', type: 'info' });
@@ -84,6 +97,7 @@ export const AffectationsPage: React.FC = () => {
   }, [chargerDonnees]);
 
   const handleCreateAffectation = async (dto: AffectationRequestDTO) => {
+    if (!canCreate) return;
     try {
       await affectationAPI.affecter(dto);
       setOpenForm(false);
@@ -95,6 +109,10 @@ export const AffectationsPage: React.FC = () => {
   };
 
   const handleCloture = (id: string) => {
+    if (!canUpdate) {
+      setDeniedAction("clôturer une affectation");
+      return;
+    }
     requestAction(
       "Clôturer l'affectation",
       "Voulez-vous acter la clôture définitive de cette mise à disposition ? Le statut passera à CLOTUREE.",
@@ -113,6 +131,10 @@ export const AffectationsPage: React.FC = () => {
   };
 
   const handleSupprimer = (id: string) => {
+    if (!canDelete) {
+      setDeniedAction("supprimer un dossier d'affectation");
+      return;
+    }
     requestAction(
       "Suppression définitive",
       "Attention, voulez-vous vraiment supprimer cette affectation ? Cette action est irréversible.",
@@ -134,7 +156,6 @@ export const AffectationsPage: React.FC = () => {
     const total = Array.isArray(affectations) ? affectations.length : 0;
     const actives = Array.isArray(affectations) ? affectations.filter(a => String(a.statut) === 'ACTIVE').length : 0;
     const cloturees = Array.isArray(affectations) ? affectations.filter(a => String(a.statut) === 'CLOTUREE').length : 0;
-    // Compter les ministères uniques actifs
     const minUniques = new Set(Array.isArray(affectations) ? affectations.filter(a => String(a.statut) === 'ACTIVE').map(a => a.ministereId) : []).size;
 
     return { total, actives, cloturees, minUniques };
@@ -150,10 +171,8 @@ export const AffectationsPage: React.FC = () => {
     });
   }, [affectations, searchQuery, statusFilter]);
 
-  // 🟢 EXPORT PDF
   const exporterPDF = () => {
     const doc = new jsPDF('landscape'); 
-
     doc.setFontSize(18);
     doc.setTextColor(15, 23, 42); 
     doc.text("Registre des Affectations (Mises à Disposition)", 14, 22);
@@ -178,15 +197,9 @@ export const AffectationsPage: React.FC = () => {
       body: tableRows,
       startY: 45,
       styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak' },
-      headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontStyle: 'bold' }, // Vert émeraude
+      headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: {
-        0: { cellWidth: 75 },
-        1: { cellWidth: 70 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 30 },
-        4: { cellWidth: 55 },
-      }
+      columnStyles: { 0: { cellWidth: 75 }, 1: { cellWidth: 70 }, 2: { cellWidth: 35 }, 3: { cellWidth: 30 }, 4: { cellWidth: 55 } }
     });
 
     doc.save(`Affectations_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -212,8 +225,13 @@ export const AffectationsPage: React.FC = () => {
             >
               <Download className="h-4 w-4 text-slate-500" /> Exporter PDF
             </button>
+            
+            {/* 🔐 BOUTON CRÉER PROTÉGÉ */}
             <button
-              onClick={() => setOpenForm(true)}
+              onClick={() => {
+                if (!canCreate) setDeniedAction("créer une nouvelle affectation");
+                else setOpenForm(true);
+              }}
               className="inline-flex items-center gap-2 rounded-xl bg-[#059669] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#047857]"
             >
               <Plus className="h-4 w-4" /> Nouvelle Affectation
@@ -305,29 +323,23 @@ export const AffectationsPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
-                          <button
-                            onClick={() => setSelectedDetail(a)}
-                            className="p-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 text-blue-600 transition"
-                            title="Voir les détails"
-                          >
+                          {/* Voir = Tout le monde */}
+                          <button onClick={() => setSelectedDetail(a)} className="p-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 text-blue-600 transition" title="Voir les détails">
                             <Eye className="h-4 w-4" />
                           </button>
-                          {String(a.statut) === 'ACTIVE' && (
-                            <button
-                              onClick={() => handleCloture(a.id)}
-                              className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 transition"
-                              title="Clôturer l'affectation"
-                            >
+
+                          {/* 🔐 BOUTONS MASQUÉS SELON DROITS */}
+                          {String(a.statut) === 'ACTIVE' && canUpdate && (
+                            <button onClick={() => handleCloture(a.id)} className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 transition" title="Clôturer l'affectation">
                               <CheckCircle className="h-4 w-4" />
                             </button>
                           )}
-                          <button
-                            onClick={() => handleSupprimer(a.id)}
-                            className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition"
-                            title="Supprimer"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          
+                          {canDelete && (
+                            <button onClick={() => handleSupprimer(a.id)} className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition" title="Supprimer">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -353,24 +365,27 @@ export const AffectationsPage: React.FC = () => {
       {selectedDetail && (
         <DetailsSlideOver
           a={selectedDetail}
+          canUpdate={canUpdate}
           onClose={() => setSelectedDetail(null)}
           onCloturer={handleCloture}
         />
       )}
 
+      {deniedAction && (
+        <AccessDeniedModal 
+          actionLabel={deniedAction} 
+          onClose={() => setDeniedAction(null)} 
+        />
+      )}
+
       <ConfirmModal 
-        show={confirmDialog.show} 
-        title={confirmDialog.title} 
-        message={confirmDialog.message} 
-        variant={confirmDialog.variant}
-        onConfirm={confirmDialog.onConfirm} 
+        show={confirmDialog.show} title={confirmDialog.title} message={confirmDialog.message} 
+        variant={confirmDialog.variant} onConfirm={confirmDialog.onConfirm} 
         onCancel={() => setConfirmDialog(prev => ({ ...prev, show: false }))} 
       />
 
       <NotificationToast 
-        show={notification.show} 
-        message={notification.message} 
-        type={notification.type} 
+        show={notification.show} message={notification.message} type={notification.type} 
         onClose={() => setNotification(prev => ({ ...prev, show: false }))} 
       />
     </div>
@@ -427,11 +442,7 @@ function AffectationFormModal({ biens, ministeres, onClose, onSave, onError }: {
   onError: (msg: string, type: 'error') => void;
 }) {
   const [dto, setDto] = useState<AffectationRequestDTO>({
-    bienId: '',
-    ministereId: '',
-    dateDebut: '',
-    motif: '',
-    observations: ''
+    bienId: '', ministereId: '', dateDebut: '', motif: '', observations: ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -456,9 +467,7 @@ function AffectationFormModal({ biens, ministeres, onClose, onSave, onError }: {
               <p className="mt-0.5 text-xs text-gray-500">Mettre à disposition un bien public à un ministère.</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-1.5 rounded-lg transition">
-            <X className="h-5 w-5" />
-          </button>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-1.5 rounded-lg transition"><X className="h-5 w-5" /></button>
         </div>
 
         <div className="grid grid-cols-1 gap-5 p-6 sm:grid-cols-2 max-h-[65vh] overflow-y-auto">
@@ -466,9 +475,7 @@ function AffectationFormModal({ biens, ministeres, onClose, onSave, onError }: {
             <span className="mb-1.5 block text-xs font-bold text-slate-700">Bien concerné *</span>
             <select required className={inputCls} value={dto.bienId} onChange={e => setDto({...dto, bienId: e.target.value})}>
               <option value="" disabled>Sélectionner le matériel...</option>
-              {biens.map(b => (
-                <option key={b.id} value={b.id}>{b.designation} {b.codeInventaire ? `(${b.codeInventaire})` : ''}</option>
-              ))}
+              {biens.map(b => <option key={b.id} value={b.id}>{b.designation} {b.codeInventaire ? `(${b.codeInventaire})` : ''}</option>)}
             </select>
           </label>
 
@@ -476,9 +483,7 @@ function AffectationFormModal({ biens, ministeres, onClose, onSave, onError }: {
             <span className="mb-1.5 block text-xs font-bold text-slate-700">Ministère Bénéficiaire *</span>
             <select required className={inputCls} value={dto.ministereId} onChange={e => setDto({...dto, ministereId: e.target.value})}>
               <option value="" disabled>Sélectionner le cessionnaire...</option>
-              {ministeres.map(m => (
-                <option key={m.id} value={m.id}>{m.nom}</option>
-              ))}
+              {ministeres.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
             </select>
           </label>
 
@@ -500,28 +505,25 @@ function AffectationFormModal({ biens, ministeres, onClose, onSave, onError }: {
 
         <div className="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4 rounded-b-2xl">
           <button type="button" onClick={onClose} className="rounded-xl bg-white border border-gray-300 px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50">Annuler</button>
-          <button type="submit" className="rounded-xl bg-[#059669] px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#047857] flex items-center gap-2">
-            <FileText className="h-4 w-4" /> Valider l'opération
-          </button>
+          <button type="submit" className="rounded-xl bg-[#059669] px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#047857] flex items-center gap-2"><FileText className="h-4 w-4" /> Valider l'opération</button>
         </div>
       </form>
     </div>
   );
 }
 
-function DetailsSlideOver({ a, onClose, onCloturer }: {
+function DetailsSlideOver({ a, onClose, onCloturer, canUpdate }: {
   a: AffectationResponseDTO;
   onClose: () => void;
   onCloturer: (id: string) => void;
+  canUpdate: boolean;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-sm" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="h-full w-full max-w-md flex flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-200">
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5 bg-[#059669] text-white">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-lg bg-white/20 text-white">
-              <Handshake className="h-5 w-5" />
-            </div>
+            <div className="grid h-10 w-10 place-items-center rounded-lg bg-white/20 text-white"><Handshake className="h-5 w-5" /></div>
             <div>
               <h3 className="text-md font-bold leading-none">Fiche d'Affectation</h3>
               <p className="text-xs text-emerald-100 font-mono mt-1.5">ID: {a.id?.toUpperCase()}</p>
@@ -550,7 +552,6 @@ function DetailsSlideOver({ a, onClose, onCloturer }: {
                 <p className="font-bold text-slate-800 mt-0.5">{a.ministereNom || a.ministereId}</p>
               </div>
             </div>
-
             <div className="flex gap-3 border-t border-gray-100 pt-3">
               <Calendar className="h-4 w-4 text-gray-400 mt-0.5" />
               <div>
@@ -564,13 +565,12 @@ function DetailsSlideOver({ a, onClose, onCloturer }: {
             <h5 className="font-bold text-slate-900 flex items-center gap-2"><FileText className="h-4 w-4 text-gray-400"/> Motif & Observations</h5>
             <div className="text-gray-700 bg-slate-50 p-3 rounded-lg text-xs leading-relaxed border border-gray-100 space-y-2">
               <p><strong>Motif :</strong> {a.motif || 'Non spécifié'}</p>
-              {a.observations && (
-                <p><strong>Obs. :</strong> {a.observations}</p>
-              )}
+              {a.observations && <p><strong>Obs. :</strong> {a.observations}</p>}
             </div>
           </section>
 
-          {String(a.statut) === 'ACTIVE' && (
+          {/* 🔐 BOUTON MASQUÉ SI L'UTILISATEUR N'A PAS LES DROITS DE MODIFICATION */}
+          {String(a.statut) === 'ACTIVE' && canUpdate && (
             <section className="rounded-xl border border-amber-100 bg-amber-50/50 p-4 space-y-3 text-xs">
               <h5 className="font-bold text-amber-950 flex items-center gap-1.5"><AlertTriangle className="h-4 w-4 text-amber-600"/> Actions rapides</h5>
               <div className="pt-1">
@@ -588,7 +588,6 @@ function DetailsSlideOver({ a, onClose, onCloturer }: {
 
 function ConfirmModal({ show, title, message, variant, onConfirm, onCancel }: { show: boolean, title: string, message: string, variant: 'danger'|'warning'|'success', onConfirm: () => void, onCancel: () => void }) {
   if (!show) return null;
-
   const styles = {
     danger: { bg: 'bg-red-100', text: 'text-red-600', btn: 'bg-red-600 hover:bg-red-700', icon: AlertTriangle },
     warning: { bg: 'bg-amber-100', text: 'text-amber-600', btn: 'bg-amber-600 hover:bg-amber-700', icon: AlertCircle },
@@ -601,13 +600,8 @@ function ConfirmModal({ show, title, message, variant, onConfirm, onCancel }: { 
     <div className="fixed inset-0 z-[60] flex bg-slate-900/40 backdrop-blur-sm items-center justify-center p-4">
       <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
         <div className="p-6 flex gap-4">
-          <div className={`shrink-0 grid h-12 w-12 place-items-center rounded-full ${StyleInfo.bg} ${StyleInfo.text}`}>
-            <Icon className="h-6 w-6" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-slate-900">{title}</h3>
-            <p className="mt-2 text-sm text-gray-500 leading-relaxed">{message}</p>
-          </div>
+          <div className={`shrink-0 grid h-12 w-12 place-items-center rounded-full ${StyleInfo.bg} ${StyleInfo.text}`}><Icon className="h-6 w-6" /></div>
+          <div><h3 className="text-lg font-bold text-slate-900">{title}</h3><p className="mt-2 text-sm text-gray-500 leading-relaxed">{message}</p></div>
         </div>
         <div className="flex items-center justify-end gap-3 bg-gray-50 px-6 py-4">
           <button onClick={onCancel} className="rounded-xl bg-white border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">Annuler</button>
@@ -620,7 +614,6 @@ function ConfirmModal({ show, title, message, variant, onConfirm, onCancel }: { 
 
 function NotificationToast({ show, message, type, onClose }: { show: boolean, message: string, type: 'success'|'error'|'info', onClose: () => void }) {
   if (!show) return null;
-  
   const styles = {
     success: { bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', icon: CheckCircle2, iconColor: 'text-emerald-500' },
     error: { bg: 'bg-red-50 border-red-200', text: 'text-red-800', icon: AlertCircle, iconColor: 'text-red-500' },
@@ -633,9 +626,7 @@ function NotificationToast({ show, message, type, onClose }: { show: boolean, me
     <div className={`fixed bottom-6 right-6 z-[70] flex max-w-sm items-center gap-3 rounded-xl border p-4 shadow-lg transition-all animate-in slide-in-from-bottom-5 fade-in duration-300 ${StyleInfo.bg}`}>
       <Icon className={`h-5 w-5 shrink-0 ${StyleInfo.iconColor}`} />
       <p className={`text-sm font-semibold ${StyleInfo.text}`}>{message}</p>
-      <button onClick={onClose} className={`ml-auto shrink-0 opacity-60 hover:opacity-100 ${StyleInfo.text}`}>
-        <X className="h-4 w-4" />
-      </button>
+      <button onClick={onClose} className={`ml-auto shrink-0 opacity-60 hover:opacity-100 ${StyleInfo.text}`}><X className="h-4 w-4" /></button>
     </div>
   );
 }

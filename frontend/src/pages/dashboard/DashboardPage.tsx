@@ -11,6 +11,8 @@ import {
 } from "recharts";
 import { LogOut, TrendingUp, Package, Wrench, ArrowRightLeft } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+// 👉 1. IMPORT DES OUTILS DE SÉCURITÉ
+import { hasPermission, AccessDeniedModal } from "../../components/AccessControl"; 
 import { affectationAPI } from "../../api/affectationAPI";
 import { maintenanceAPI } from "../../api/maintenanceAPI";
 import { mouvementAPI } from "../../api/mouvementAPI";
@@ -33,6 +35,11 @@ const DashboardPage: React.FC = () => {
     prenom: "K",
     role: "ADMIN"
   };
+
+  // 👉 2. VÉRIFICATION DU DROIT "CREATE" SUR LES BIENS
+  const userRole = user.role || 'CONSULTANT';
+  const canCreateBien = hasPermission(userRole, 'biens', 'CREATE');
+  const [deniedAction, setDeniedAction] = useState<string | null>(null);
 
   const [stats, setStats] = useState([
     { title: "Total des biens", value: "0", trend: "+0%", icon: <Package size={20} /> },
@@ -111,7 +118,7 @@ const DashboardPage: React.FC = () => {
           { month: "Mar", value: maintenances.length > 0 ? 8 : 0 },
           { month: "Avr", value: mouvements.length },
           { month: "Mai", value: totalBiens },
-          { month: "Juin", value: totalBiens + affectations.length } // Simplifié pour l'exemple visuel
+          { month: "Juin", value: totalBiens + affectations.length }
         ]);
 
       } catch (e) {
@@ -157,8 +164,16 @@ const DashboardPage: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-900">Bonjour, {user.prenom} 👋</h2>
             <p className="text-sm text-gray-500 mt-1">Voici la vue globale du patrimoine de l'État.</p>
           </div>
+          
+          {/* 👉 3. BOUTON PROTÉGÉ PAR LE TEST */}
           <button
-            onClick={() => navigate("/biens/nouveau")}
+            onClick={() => {
+              if (!canCreateBien) {
+                setDeniedAction("enregistrer un nouveau bien depuis le tableau de bord");
+              } else {
+                navigate("/biens/nouveau");
+              }
+            }}
             className="bg-[#00236f] hover:bg-[#1e3fc2] text-white px-5 py-2.5 rounded-xl text-sm font-medium shadow-sm transition-all"
           >
             + Nouveau bien
@@ -197,17 +212,8 @@ const DashboardPage: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                   <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#00236f"
-                    fill="#eff6ff"
-                    strokeWidth={3}
-                    activeDot={{ r: 6, fill: '#00236f', stroke: '#fff', strokeWidth: 2 }}
-                  />
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  <Area type="monotone" dataKey="value" stroke="#00236f" fill="#eff6ff" strokeWidth={3} activeDot={{ r: 6, fill: '#00236f', stroke: '#fff', strokeWidth: 2 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -236,6 +242,14 @@ const DashboardPage: React.FC = () => {
         </div>
 
       </main>
+
+      {/* 👉 4. AFFICHAGE DE LA MODALE SI ACCÈS REFUSÉ */}
+      {deniedAction && (
+        <AccessDeniedModal 
+          actionLabel={deniedAction} 
+          onClose={() => setDeniedAction(null)} 
+        />
+      )}
     </div>
   );
 };

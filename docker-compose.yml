@@ -35,9 +35,8 @@ services:
       dockerfile: Dockerfile
     container_name: patrimoine-front-container
     ports:
-      # Si vous utilisez Vite en mode dev, gardez "5173:5173"
-      # Si vous utilisez Nginx pour la production, mettez plutôt "80:80" ou "3000:80"
-      - "5173:5173" 
+      # ربط المنفذ 5173 في جهازك بمنفذ 80 الخاص بـ Nginx
+      - "5173:80" 
     depends_on:
       - backend
     networks:
@@ -48,5 +47,6 @@ networks:
   patrimoine-network:
     driver: bridge
 
+# تعريف مساحة التخزين لقاعدة البيانات لكي لا تضيع البيانات عند إغلاق الحاوية
 volumes:
   mongo-data:

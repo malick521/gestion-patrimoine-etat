@@ -8,7 +8,9 @@ import mr.patrimoine.gestion.model.entity.MinistereEntity;
 import mr.patrimoine.gestion.repository.MinistereRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -124,6 +126,20 @@ public class MinistereService {
             throw new ResourceNotFoundException("Ministere", id);
         }
         ministereRepository.deleteById(id);
+    }
+
+    // ==================== SAUVEGARDER LE PDF EN BASE ====================
+    public void sauvegarderFichierPdf(String id, MultipartFile file) {
+        MinistereEntity ministere = ministereRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Ministere", id));
+
+        try {
+            // Convertir le fichier en tableau d'octets (byte[]) et le sauvegarder dans l'entité
+            ministere.setFichierPdf(file.getBytes());
+            ministereRepository.save(ministere);
+        } catch (IOException e) {
+            throw new BusinessException("Erreur lors de la lecture du fichier PDF");
+        }
     }
 
     // ==================== MAPPER ====================

@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { maintenanceAPI } from '../../api/maintenanceAPI';
 import { bienAPI } from '../../api/bienAPI';
+import { useAuth } from '../../context/AuthContext';
+import { hasPermission, AccessDeniedModal } from '../../components/AccessControl';
 import { 
   MaintenanceResponseDTO, 
   MaintenanceRequestDTO, 
@@ -17,6 +19,16 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export const MaintenancesPage: React.FC = () => {
+  // 🔐 CONNEXION AU CONTEXTE D'AUTHENTIFICATION
+  const { user } = useAuth();
+  const userRole = user?.role || 'CONSULTANT';
+
+  // 🔐 ÉVALUATION DES DROITS (Ressource: 'maintenances')
+  const canRead = hasPermission(userRole, 'maintenances', 'READ');
+  const canCreate = hasPermission(userRole, 'maintenances', 'CREATE');
+  const canUpdate = hasPermission(userRole, 'maintenances', 'UPDATE');
+  const canDelete = hasPermission(userRole, 'maintenances', 'DELETE');
+
   const [maintenances, setMaintenances] = useState<MaintenanceResponseDTO[]>([]);
   const [biens, setBiens] = useState<BienResponseDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -25,8 +37,11 @@ export const MaintenancesPage: React.FC = () => {
 
   const [openForm, setOpenForm] = useState<boolean>(false);
   const [selectedDetail, setSelectedDetail] = useState<MaintenanceResponseDTO | null>(null);
+  
+  // 🔐 État pour déclencher la modale d'interdiction
+  const [deniedAction, setDeniedAction] = useState<string | null>(null);
 
-  // --- NOUVEAUX STATES POUR LES ALERTES UI ---
+  // --- STATES POUR LES ALERTES UI ---
   const [notification, setNotification] = useState<{show: boolean, message: string, type: 'success' | 'error' | 'info'}>({ show: false, message: '', type: 'info' });
   const [confirmDialog, setConfirmDialog] = useState<{show: boolean, title: string, message: string, onConfirm: () => void, variant: 'danger' | 'warning' | 'success'}>({ show: false, title: '', message: '', onConfirm: () => {}, variant: 'warning' });
 
@@ -47,18 +62,23 @@ export const MaintenancesPage: React.FC = () => {
       }
     });
   };
-  // -------------------------------------------
 
   useEffect(() => {
     chargerDonnees();
   }, []);
 
   const chargerDonnees = async () => {
+    if (!canRead) {
+      setLoading(false);
+      setDeniedAction("consulter le registre des interventions techniques");
+      return;
+    }
+
     try {
       setLoading(true);
       const [maintenanceData, biensData] = await Promise.all([
-        maintenanceAPI.obtenirTous(),
-        bienAPI.obtenirTous()
+        maintenanceAPI.obtenirTous().catch(() => []),
+        bienAPI.obtenirTous().catch(() => [])
       ]);
       setMaintenances(maintenanceData);
       setBiens(biensData);
@@ -71,6 +91,10 @@ export const MaintenancesPage: React.FC = () => {
   };
 
   const handleCreateMaintenance = async (dto: MaintenanceRequestDTO) => {
+    if (!canCreate) {
+      setDeniedAction("créer une nouvelle fiche d'intervention");
+      return;
+    }
     try {
       await maintenanceAPI.creer(dto);
       setOpenForm(false);
@@ -83,6 +107,10 @@ export const MaintenancesPage: React.FC = () => {
   };
 
   const handleTerminerMaintenance = (id: string) => {
+    if (!canUpdate) {
+      setDeniedAction("clôturer une intervention technique");
+      return;
+    }
     requestAction(
       "Clôturer l'intervention",
       "Voulez-vous marquer cette intervention comme terminée ? Cette action mettra à jour l'historique du bien.",
@@ -101,6 +129,10 @@ export const MaintenancesPage: React.FC = () => {
   };
 
   const handleAnnulerMaintenance = (id: string) => {
+    if (!canUpdate) {
+      setDeniedAction("annuler un ordre de maintenance");
+      return;
+    }
     requestAction(
       "Annuler l'intervention",
       "Êtes-vous sûr de vouloir annuler cette intervention ? Elle passera en statut annulé.",
@@ -119,6 +151,10 @@ export const MaintenancesPage: React.FC = () => {
   };
 
   const handleSupprimerMaintenance = (id: string) => {
+    if (!canDelete) {
+      setDeniedAction("supprimer définitivement un registre de maintenance");
+      return;
+    }
     requestAction(
       "Suppression définitive",
       "Confirmez-vous la suppression définitive de cette fiche ? Cette action est irréversible.",
@@ -159,18 +195,15 @@ export const MaintenancesPage: React.FC = () => {
     });
   }, [maintenances, searchQuery, statusFilter]);
 
-  // --- EXPORT PDF ---
   const exporterPDF = () => {
     const doc = new jsPDF('landscape'); 
-
     doc.setFontSize(18);
     doc.setTextColor(15, 23, 42); 
     doc.text("Registre des Interventions Techniques", 14, 22);
     
     doc.setFontSize(10);
     doc.setTextColor(100);
-    const dateExtraction = new Date().toLocaleString('fr-FR');
-    doc.text(`Date d'extraction : ${dateExtraction}`, 14, 30);
+    doc.text(`Date d'extraction : ${new Date().toLocaleString('fr-FR')}`, 14, 30);
     doc.text(`Nombre d'interventions : ${filteredMaintenances.length}`, 14, 36);
 
     const tableColumn = ["Bien Public", "Type Opération", "Prestataire", "Date Prévue", "Montant (MRU)", "Statut"];
@@ -190,14 +223,6 @@ export const MaintenancesPage: React.FC = () => {
       styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak' },
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: {
-        0: { cellWidth: 50 },
-        1: { cellWidth: 35 },
-        2: { cellWidth: 50 },
-        3: { cellWidth: 30 },
-        4: { cellWidth: 35 },
-        5: { cellWidth: 30 },
-      }
     });
 
     doc.save(`Registre_Maintenances_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -218,13 +243,18 @@ export const MaintenancesPage: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={exporterPDF}
-              disabled={loading || filteredMaintenances.length === 0}
+              disabled={loading || filteredMaintenances.length === 0 || !canRead}
               className="inline-flex items-center gap-2 rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-50"
             >
               <Download className="h-4 w-4 text-slate-500" /> Exporter PDF
             </button>
+            
+            {/* 🔐 BOUTON PROTÉGÉ */}
             <button
-              onClick={() => setOpenForm(true)}
+              onClick={() => {
+                if (!canCreate) setDeniedAction("planifier une nouvelle intervention");
+                else setOpenForm(true);
+              }}
               className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
             >
               <Plus className="h-4 w-4" /> Nouvelle Intervention
@@ -244,19 +274,21 @@ export const MaintenancesPage: React.FC = () => {
             <div className="relative min-w-0 flex-1 max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
+                disabled={!canRead}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Rechercher par matériel, prestataire..."
-                className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+                className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-slate-900 disabled:bg-gray-50 disabled:text-gray-400"
               />
             </div>
             
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-gray-400" />
               <select 
+                disabled={!canRead}
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-slate-900"
+                className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-slate-900 disabled:bg-gray-50"
               >
                 <option value="TOUS">Tous les statuts</option>
                 {Object.values(StatutMaintenance).map(st => (
@@ -284,6 +316,18 @@ export const MaintenancesPage: React.FC = () => {
                   <tr>
                     <td colSpan={7} className="px-6 py-16 text-center text-gray-400 font-medium animate-pulse">
                       Chargement des fiches de maintenance technique...
+                    </td>
+                  </tr>
+                ) : !canRead ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-red-50 text-red-500">
+                        <AlertTriangle className="h-6 w-6" />
+                      </div>
+                      <p className="mt-3 text-sm font-bold text-slate-900">Accès restreint</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Votre rôle <span className="font-semibold text-slate-700">({userRole})</span> ne vous autorise pas à lire le contenu de ce registre.
+                      </p>
                     </td>
                   </tr>
                 ) : filteredMaintenances.length === 0 ? (
@@ -324,6 +368,7 @@ export const MaintenancesPage: React.FC = () => {
                           >
                             <Eye className="h-4 w-4" />
                           </button>
+                          
                           {m.statut !== StatutMaintenance.TERMINEE && m.statut !== StatutMaintenance.ANNULEE && (
                             <>
                               <button
@@ -376,6 +421,14 @@ export const MaintenancesPage: React.FC = () => {
           onClose={() => setSelectedDetail(null)}
           onTerminer={handleTerminerMaintenance}
           onAnnuler={handleAnnulerMaintenance}
+        />
+      )}
+
+      {/* 🛑 Modale Accès Refusé */}
+      {deniedAction && (
+        <AccessDeniedModal 
+          actionLabel={deniedAction} 
+          onClose={() => setDeniedAction(null)} 
         />
       )}
 
