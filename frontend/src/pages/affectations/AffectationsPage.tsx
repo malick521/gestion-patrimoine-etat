@@ -96,17 +96,31 @@ export const AffectationsPage: React.FC = () => {
     chargerDonnees();
   }, [chargerDonnees]);
 
-  const handleCreateAffectation = async (dto: AffectationRequestDTO) => {
-    if (!canCreate) return;
-    try {
-      await affectationAPI.affecter(dto);
-      setOpenForm(false);
-      showNotification("Nouvelle mise à disposition enregistrée !", "success");
-      chargerDonnees();
-    } catch (err: any) {
-      showNotification(err.response?.data?.message || "Erreur lors de l'affectation. Le bien est peut-être déjà affecté.", "error");
+const handleCreateAffectation = async (dto: AffectationRequestDTO) => {
+  if (!canCreate) return;
+  try {
+    await affectationAPI.affecter(dto);
+    setOpenForm(false);
+    showNotification("Nouvelle mise à disposition enregistrée !", "success");
+    chargerDonnees();
+  } catch (err: any) {
+    const status = err.response?.status;
+    const backendMessage = err.response?.data?.message;
+
+    // Choix d'un message ferme et sans ambiguïté
+    let messageErreur = "Impossible d'enregistrer l'opération. Ce bien est déjà associé à une affectation ACTIVE.";
+
+    if (backendMessage) {
+      // Si l'API renvoie un message personnalisé, on l'utilise
+      messageErreur = backendMessage;
+    } else if (status === 409 || status === 400) {
+      // Statuts standards pour les conflits de règles métier
+      messageErreur = "Échec de l'opération : Ce bien public est déjà mis à disposition d'un autre ministère.";
     }
-  };
+
+    showNotification(messageErreur, "error");
+  }
+};
 
   const handleCloture = (id: string) => {
     if (!canUpdate) {
