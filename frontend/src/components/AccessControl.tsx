@@ -1,43 +1,82 @@
 import React from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { UserRole } from '../context/AuthContext'; 
 
-// 🔐 MATRICE DES PERMISSIONS
-export const hasPermission = (
-  userRole: string, 
-  // 👉 CORRECTION : Ajout de 'mouvements' dans la liste des ressources autorisées
-  resource: 'categories' | 'ministeres' | 'biens' | 'mouvements'| 'maintenances'|'affectations',
-  action: 'CREATE' | 'READ' | 'UPDATE' | 'DELETE'
-): boolean => {
-  // L'ADMIN a tous les droits partout
-  if (userRole === 'ADMIN') return true;
+export type PermissionAction = 'READ' | 'CREATE' | 'UPDATE' | 'DELETE';
 
-  // LE GESTIONNAIRE a des droits spécifiques
-  // LE GESTIONNAIRE a des droits opérationnels
-  // LE GESTIONNAIRE a des droits spécifiques et opérationnels
-  if (userRole === 'GESTIONNAIRE') {
-    if (action === 'READ') return true;
-    
-    // Droits sur les Catégories
-    if (resource === 'categories' && action === 'CREATE') return true;
-    
-    // Droits sur les Mouvements
-    if (resource === 'mouvements' && action === 'CREATE') return true; 
-    
-    // Droits sur les Affectations
-    if (resource === 'affectations' && (action === 'CREATE' || action === 'UPDATE')) return true;
-    
-    // 👉 LA CORRECTION EST ICI : Le Gestionnaire peut Créer et Modifier les Biens
-    if (resource === 'biens' && (action === 'CREATE' || action === 'UPDATE')) return true;
+// On inclut bien 'users' dans la liste des ressources autorisées
+export type Resource = 
+  | 'categories' 
+  | 'ministeres' 
+  | 'biens' 
+  | 'mouvements' 
+  | 'maintenances' 
+  | 'affectations' 
+  | 'users';
 
-    // Pour tout le reste (comme DELETE), c'est refusé
-    return false;
+type PermissionsMatrix = Record<UserRole, Record<Resource, PermissionAction[]>>;
+
+export const ROLE_PERMISSIONS: PermissionsMatrix = {
+  ADMIN: {
+    categories:   ['READ', 'CREATE', 'UPDATE', 'DELETE'],
+    ministeres:   ['READ', 'CREATE', 'UPDATE', 'DELETE'],
+    biens:        ['READ', 'CREATE', 'UPDATE', 'DELETE'],
+    mouvements:   ['READ', 'CREATE', 'UPDATE', 'DELETE'],
+    maintenances: ['READ', 'CREATE', 'UPDATE', 'DELETE'],
+    affectations: ['READ', 'CREATE', 'UPDATE', 'DELETE'],
+    users:        ['READ', 'CREATE', 'UPDATE', 'DELETE'],
+  },
+  GESTIONNAIRE: {
+    categories:   ['READ'],
+    ministeres:   ['READ'],
+    biens:        ['READ', 'CREATE', 'UPDATE'],
+    mouvements:   ['READ', 'CREATE'],
+    maintenances: ['READ', 'CREATE', 'UPDATE'],
+    affectations: ['READ', 'CREATE'],
+    users:        ['READ'], 
+  },
+  AUDITEUR: {
+    categories:   ['READ'],
+    ministeres:   ['READ'],
+    biens:        ['READ'],
+    mouvements:   ['READ'],
+    maintenances: ['READ'],
+    affectations: ['READ'],
+    users:        ['READ'], 
+  },
+  CONSULTANT: {
+    categories:   ['READ'],
+    ministeres:   ['READ'],
+    biens:        ['READ'],
+    mouvements:   [],
+    maintenances: [],
+    affectations: [],
+    users:        [], 
   }
-
-  // L'AUDITEUR et le CONSULTANT n'ont que des droits de lecture
-  return action === 'READ';
 };
 
-// 🛑 MODALE D'ACCÈS REFUSÉ (Mutualisée pour toute l'application)
+export const hasPermission = (
+  userRole?: string | UserRole | null,
+  resource?: Resource,
+  action?: PermissionAction
+): boolean => {
+  if (!userRole || !resource || !action) return false;
+
+  try {
+    const normalizedRole = String(userRole).trim().toUpperCase() as UserRole;
+    
+    const rolePermissions = ROLE_PERMISSIONS[normalizedRole];
+    if (!rolePermissions) return false;
+
+    const resourceActions = rolePermissions[resource];
+    if (!resourceActions) return false;
+
+    return resourceActions.includes(action);
+  } catch (error) {
+    console.error(`Erreur d'évaluation des droits pour le rôle : ${userRole}`, error);
+    return false;
+  }
+};
+
 interface AccessDeniedModalProps {
   actionLabel: string;
   onClose: () => void;
@@ -45,21 +84,23 @@ interface AccessDeniedModalProps {
 
 export const AccessDeniedModal: React.FC<AccessDeniedModalProps> = ({ actionLabel, onClose }) => {
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full text-center space-y-4 animate-in zoom-in-95 duration-150">
-        <div className="mx-auto h-14 w-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
-          <AlertTriangle className="h-7 w-7" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl border border-red-100">
+        <div className="bg-red-50 p-6 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100 text-red-600 mb-3 shadow-inner">
+            <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-bold text-slate-900">Habilitation insuffisante</h3>
         </div>
-        <h3 className="text-lg font-bold text-slate-900">Accès Refusé</h3>
-        <p className="text-sm text-slate-500">
-          Votre rôle actuel ne vous permet pas de <strong className="text-slate-700">{actionLabel}</strong>. Veuillez contacter un administrateur.
-        </p>
-        <div className="mt-6">
-          <button
-            onClick={onClose}
-            className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition"
-          >
-            J'ai compris
+        <div className="p-6 text-center text-sm text-slate-600">
+          <p>Votre profil actuel ne vous autorise pas à <span className="font-semibold text-slate-900 underline decoration-red-400">{actionLabel}</span>.</p>
+          <p className="mt-2 text-xs text-slate-400">Rapprochez-vous d'un Administrateur de la plateforme pour faire évoluer vos privilèges.</p>
+        </div>
+        <div className="bg-slate-50 px-6 py-3.5 flex justify-center border-t border-slate-100">
+          <button onClick={onClose} className="w-full rounded-xl bg-[#00236f] py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#1e3fc2] transition-colors">
+            Fermer
           </button>
         </div>
       </div>

@@ -1,26 +1,42 @@
 import React, { useEffect, useState } from 'react';
 import { userAPI } from '../../api/userAPIS'; 
 import { ministereAPI } from '../../api/ministereAPI'; 
+import { useAuth } from '../../context/AuthContext';
+import { hasPermission, AccessDeniedModal } from '../../components/AccessControl';
 import { UserResponseDTO, UserRole, MinistereResponseDTO, UserRequestDTO } from '../../types';
 
 export const UsersPage: React.FC = () => {
+  const { user } = useAuth();
+  const userRole = user?.role || 'CONSULTANT';
+
+  const canRead = hasPermission(userRole, 'users', 'READ');
+  const canCreate = hasPermission(userRole, 'users', 'CREATE');
+  const canUpdate = hasPermission(userRole, 'users', 'UPDATE');
+
   const [users, setUsers] = useState<UserResponseDTO[]>([]);
   const [ministeres, setMinisteres] = useState<MinistereResponseDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('Tous');
+  
   const [openForm, setOpenForm] = useState<boolean>(false);
+  const [deniedAction, setDeniedAction] = useState<string | null>(null);
 
   useEffect(() => {
     chargerDonnees();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const chargerDonnees = async () => {
+    if (!canRead) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const [usersData, ministeresData] = await Promise.all([
-        userAPI.obtenirTous(),
-        ministereAPI.obtenirTous() 
+        userAPI.obtenirTous().catch(() => []),
+        ministereAPI.obtenirTous().catch(() => []) 
       ]);
       setUsers(usersData);
       setMinisteres(ministeresData);
@@ -32,6 +48,10 @@ export const UsersPage: React.FC = () => {
   };
 
   const handleToggleActif = async (id: string, statutActuel: boolean) => {
+    if (!canUpdate) {
+      setDeniedAction("modifier le statut d'un compte utilisateur");
+      return;
+    }
     try {
       setUsers(prev => prev.map(u => u.id === id ? { ...u, actif: !statutActuel } : u));
       await userAPI.modifierStatut(id);
@@ -42,6 +62,10 @@ export const UsersPage: React.FC = () => {
   };
 
   const handleCreateUser = async (dto: UserRequestDTO) => {
+    if (!canCreate) {
+      setDeniedAction("créer un nouvel agent");
+      return;
+    }
     try {
       await userAPI.creer(dto);
       setOpenForm(false);
@@ -57,32 +81,32 @@ export const UsersPage: React.FC = () => {
     return `${iPrenom}${iNom}` || 'AG';
   };
 
-  const formatRoleLabel = (role: UserRole) => {
+  const formatRoleLabel = (role: UserRole | string) => {
     switch (role) {
-      case UserRole.ADMIN: return 'Administrateur';
-      case UserRole.GESTIONNAIRE: return 'Gestionnaire';
-      case UserRole.AUDITEUR: return 'Auditeur';
-      case UserRole.CONSULTANT: return 'Consultant';
+      case 'ADMIN': return 'Administrateur';
+      case 'GESTIONNAIRE': return 'Gestionnaire';
+      case 'AUDITEUR': return 'Auditeur';
+      case 'CONSULTANT': return 'Consultant';
       default: return role;
     }
   };
 
-  const getPermissionsByRole = (role: UserRole) => {
+  const getPermissionsByRole = (role: string) => {
     return {
       lecture: true,
-      modification: role === UserRole.ADMIN || role === UserRole.GESTIONNAIRE,
-      approbation: role === UserRole.ADMIN
+      modification: role === 'ADMIN' || role === 'GESTIONNAIRE',
+      approbation: role === 'ADMIN'
     };
   };
 
-  const filteredUsers = users.filter((user) => {
+  const filteredUsers = users.filter((userItem) => {
     const matchesSearch = 
-      `${user.nom} ${user.prenom}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (user.ministereNom && user.ministereNom.toLowerCase().includes(searchQuery.toLowerCase()));
+      `${userItem.nom} ${userItem.prenom}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      userItem.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (userItem.ministereNom && userItem.ministereNom.toLowerCase().includes(searchQuery.toLowerCase()));
     
     if (selectedRoleFilter === 'Tous') return matchesSearch;
-    return matchesSearch && user.userRole === selectedRoleFilter;
+    return matchesSearch && userItem.userRole === selectedRoleFilter;
   });
 
   return (
@@ -94,12 +118,17 @@ export const UsersPage: React.FC = () => {
           <p className="text-sm text-gray-500 mt-1">Rôles, permissions et activité des agents du patrimoine</p>
         </div>
         <button 
-          onClick={() => setOpenForm(true)}
-          className="inline-flex items-center gap-2 bg-[#00236f] hover:bg-[#1e3fc2] text-white px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all duration-200"
+          onClick={() => {
+            if (!canCreate) setDeniedAction("inviter un nouvel utilisateur");
+            else setOpenForm(true);
+          }}
+          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all duration-200 ${
+            canCreate 
+              ? 'bg-[#00236f] hover:bg-[#1e3fc2] text-white' 
+              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+          }`}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-          </svg>
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
           Inviter un utilisateur
         </button>
       </div>
@@ -107,31 +136,29 @@ export const UsersPage: React.FC = () => {
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col lg:flex-row gap-4 items-center justify-between mb-8">
         <div className="relative w-full lg:w-96">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           </span>
           <input
             type="text"
+            disabled={!canRead}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Rechercher un utilisateur, un e-mail..."
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00236f] focus:bg-white transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00236f] focus:bg-white transition-all disabled:bg-gray-100 disabled:text-gray-400"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-          {['Tous', UserRole.ADMIN, UserRole.GESTIONNAIRE, UserRole.AUDITEUR, UserRole.CONSULTANT].map((roleKey) => {
+          {['Tous', 'ADMIN', 'GESTIONNAIRE', 'AUDITEUR', 'CONSULTANT'].map((roleKey) => {
             const isSelected = selectedRoleFilter === roleKey;
-            const label = roleKey === 'Tous' ? 'Tous' : formatRoleLabel(roleKey as UserRole);
+            const label = roleKey === 'Tous' ? 'Tous' : formatRoleLabel(roleKey);
             return (
               <button
                 key={roleKey}
+                disabled={!canRead}
                 onClick={() => setSelectedRoleFilter(roleKey)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  isSelected 
-                    ? 'bg-[#00236f] text-white shadow-sm' 
-                    : 'bg-transparent text-gray-600 hover:bg-gray-100'
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 disabled:opacity-50 ${
+                  isSelected ? 'bg-[#00236f] text-white shadow-sm' : 'bg-transparent text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 {label}
@@ -146,33 +173,38 @@ export const UsersPage: React.FC = () => {
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#00236f]"></div>
           <p className="text-gray-500 text-sm mt-4">Synchronisation des agents en cours...</p>
         </div>
+      ) : !canRead ? (
+        <div className="bg-white rounded-2xl border border-red-100 p-16 text-center shadow-sm">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-red-50 text-red-500 mb-4">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          </div>
+          <h2 className="text-lg font-bold text-gray-900">Accès restreint</h2>
+          <p className="text-gray-500 mt-2 max-w-md mx-auto">
+            Votre profil actuel <strong>({formatRoleLabel(userRole)})</strong> ne vous permet pas de consulter l'annuaire des utilisateurs.
+          </p>
+        </div>
       ) : filteredUsers.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-12 text-center">
-          <p className="text-gray-500 font-medium">Aucun agent ou fonctionnaire ne correspond à vos critères.</p>
+          <p className="text-gray-500 font-medium">Aucun agent ne correspond à vos critères.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredUsers.map((user) => {
-            const perms = getPermissionsByRole(user.userRole);
+          {filteredUsers.map((userItem) => {
+            const perms = getPermissionsByRole(userItem.userRole);
             return (
-              <div 
-                key={user.id} 
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden"
-              >
+              <div key={userItem.id} className={`bg-white rounded-2xl border transition-all duration-200 flex flex-col overflow-hidden ${!userItem.actif ? 'border-gray-200 opacity-80' : 'border-gray-100 shadow-sm hover:shadow-md'}`}>
                 <div className="p-6 pb-4 flex items-start justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-[#00236f] text-white font-bold flex items-center justify-center text-base shadow-inner">
-                      {getInitials(user.nom, user.prenom)}
+                    <div className={`w-12 h-12 rounded-full font-bold flex items-center justify-center text-base shadow-inner ${userItem.actif ? 'bg-[#00236f] text-white' : 'bg-gray-300 text-gray-600'}`}>
+                      {getInitials(userItem.nom, userItem.prenom)}
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900 text-base leading-snug">
-                        {user.prenom} {user.nom}
+                      <h3 className={`font-semibold text-base leading-snug ${userItem.actif ? 'text-gray-900' : 'text-gray-500'}`}>
+                        {userItem.prenom} {userItem.nom}
                       </h3>
                       <div className="flex items-center gap-1.5 text-gray-500 text-xs mt-1">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L22 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        <span className="font-mono">{user.email}</span>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L22 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                        <span className="font-mono">{userItem.email}</span>
                       </div>
                     </div>
                   </div>
@@ -180,11 +212,11 @@ export const UsersPage: React.FC = () => {
 
                 <div className="px-6 flex flex-wrap items-center gap-2 mb-6">
                   <span className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-                    {formatRoleLabel(user.userRole)}
+                    {formatRoleLabel(userItem.userRole)}
                   </span>
-                  {user.ministereNom && (
+                  {userItem.ministereNom && (
                     <span className="text-xs font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                      {user.ministereNom}
+                      {userItem.ministereNom}
                     </span>
                   )}
                 </div>
@@ -192,37 +224,28 @@ export const UsersPage: React.FC = () => {
                 <div className="px-6 space-y-3 mb-6 border-t border-gray-50 pt-4 text-sm text-gray-600">
                   <div className="flex items-center justify-between">
                     <span>Lecture</span>
-                    <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-200 ${perms.lecture ? 'bg-emerald-500' : 'bg-gray-200'}`}>
-                      <div className={`bg-white w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${perms.lecture ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </div>
+                    <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-200 ${perms.lecture ? 'bg-emerald-500' : 'bg-gray-200'}`}><div className={`bg-white w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${perms.lecture ? 'translate-x-4' : 'translate-x-0'}`} /></div>
                   </div>
-                  
                   <div className="flex items-center justify-between">
                     <span>Modification</span>
-                    <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-200 ${perms.modification ? 'bg-emerald-500' : 'bg-gray-200'}`}>
-                      <div className={`bg-white w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${perms.modification ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </div>
+                    <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-200 ${perms.modification ? 'bg-emerald-500' : 'bg-gray-200'}`}><div className={`bg-white w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${perms.modification ? 'translate-x-4' : 'translate-x-0'}`} /></div>
                   </div>
-
                   <div className="flex items-center justify-between">
                     <span>Approbation</span>
-                    <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-200 ${perms.approbation ? 'bg-emerald-500' : 'bg-gray-200'}`}>
-                      <div className={`bg-white w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${perms.approbation ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </div>
+                    <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-200 ${perms.approbation ? 'bg-emerald-500' : 'bg-gray-200'}`}><div className={`bg-white w-3 h-3 rounded-full shadow-sm transform transition-transform duration-200 ${perms.approbation ? 'translate-x-4' : 'translate-x-0'}`} /></div>
                   </div>
                 </div>
 
                 <div className="mt-auto bg-[#f4f3fa] px-6 py-4 flex items-center justify-between border-t border-gray-100">
                   <div>
-                    <span className="block text-sm font-semibold text-gray-900">Compte actif</span>
+                    <span className="block text-sm font-semibold text-gray-900">{userItem.actif ? 'Compte actif' : 'Compte suspendu'}</span>
                   </div>
                   <button
-                    onClick={() => handleToggleActif(user.id, user.actif)}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      user.actif ? 'bg-emerald-500' : 'bg-gray-300'
-                    }`}
+                    onClick={() => handleToggleActif(userItem.id, userItem.actif)}
+                    disabled={!canUpdate}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:cursor-not-allowed ${userItem.actif ? (canUpdate ? 'bg-emerald-500' : 'bg-emerald-300') : 'bg-gray-300'}`}
                   >
-                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${user.actif ? 'translate-x-5' : 'translate-x-0'}`} />
+                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${userItem.actif ? 'translate-x-5' : 'translate-x-0'}`} />
                   </button>
                 </div>
               </div>
@@ -232,24 +255,23 @@ export const UsersPage: React.FC = () => {
       )}
 
       {openForm && (
-        <UserFormModal 
-          ministeres={ministeres}
-          onClose={() => setOpenForm(false)}
-          onSave={handleCreateUser}
-        />
+        <UserFormModal ministeres={ministeres} onClose={() => setOpenForm(false)} onSave={handleCreateUser} />
+      )}
+
+      {deniedAction && (
+        <AccessDeniedModal actionLabel={deniedAction} onClose={() => setDeniedAction(null)} />
       )}
     </div>
   );
 };
 
-/* ---------- COMPOSANT DE FORMULAIRE MODAL ---------- */
 function UserFormModal({ ministeres, onClose, onSave }: {
   ministeres: MinistereResponseDTO[];
   onClose: () => void;
   onSave: (dto: UserRequestDTO) => void;
 }) {
   const [dto, setDto] = useState<UserRequestDTO>({
-    nom: '', prenom: '', email: '', motDePasse: '', ministereId: '', role: UserRole.CONSULTANT
+    nom: '', prenom: '', email: '', motDePasse: '', ministereId: '', role: 'CONSULTANT' as UserRole
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -294,9 +316,9 @@ function UserFormModal({ ministeres, onClose, onSave }: {
 
           <label className="block text-xs font-bold text-slate-700">Rôle Applicatif / Droits *
             <select required className={inputCls} value={dto.role} onChange={e => setDto({...dto, role: e.target.value as UserRole})}>
-              {Object.values(UserRole).map(role => (
+              {['ADMIN', 'GESTIONNAIRE', 'AUDITEUR', 'CONSULTANT'].map(role => (
                 <option key={role} value={role}>
-                  {role === UserRole.ADMIN ? 'Administrateur' : role === UserRole.GESTIONNAIRE ? 'Gestionnaire' : role === UserRole.AUDITEUR ? 'Auditeur' : 'Consultant'}
+                  {role === 'ADMIN' ? 'Administrateur' : role === 'GESTIONNAIRE' ? 'Gestionnaire' : role === 'AUDITEUR' ? 'Auditeur' : 'Consultant'}
                 </option>
               ))}
             </select>
@@ -304,7 +326,7 @@ function UserFormModal({ ministeres, onClose, onSave }: {
 
           <label className="block text-xs font-bold text-slate-700">Ministère d'Affectation *
             <select required className={inputCls} value={dto.ministereId} onChange={e => setDto({...dto, ministereId: e.target.value})}>
-              <option value="" disabled>Sélectionner le ministère de rattachement...</option>
+              <option value="" disabled>Sélectionner le ministère...</option>
               {ministeres.map(m => (
                 <option key={m.id} value={m.id}>{m.nom} ({m.code})</option>
               ))}

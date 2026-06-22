@@ -13,42 +13,35 @@ import {
   Calendar, FileText, AlertTriangle, ArrowLeftRight, Landmark, AlignLeft, Scale, Download, CheckCircle2
 } from "lucide-react";
 import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+import "jspdf-autotable";
 
 export const MouvementsPage: React.FC = () => {
-  // 🔐 CONNEXION AU CONTEXTE D'AUTHENTIFICATION
   const { user } = useAuth();
   const userRole = user?.role || 'CONSULTANT';
-
-  // 🔐 ÉVALUATION DES DROITS
   const canCreate = hasPermission(userRole, 'mouvements', 'CREATE');
 
-  // 🟢 Données
   const [list, setList] = useState<MouvementResponseDTO[]>([]);
   const [biens, setBiens] = useState<BienResponseDTO[]>([]);
   const [ministeres, setMinisteres] = useState<MinistereResponseDTO[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // 🟢 Filtres harmonisés
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("TOUS");
   
-  // 🟢 États des fenêtres et alertes
   const [openForm, setOpenForm] = useState(false);
   const [details, setDetails] = useState<MouvementResponseDTO | null>(null);
   const [deniedAction, setDeniedAction] = useState<string | null>(null);
   
-  // 🟢 État pour les notifications (Toasts)
   const [toast, setToast] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
-  // Fonction pour afficher une notification temporaire
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
-    setTimeout(() => setToast(null), 4000); // Disparaît après 4 secondes
+    setTimeout(() => setToast(null), 5000); 
   };
 
   useEffect(() => {
     chargerDonnees();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const chargerDonnees = async () => {
@@ -109,7 +102,7 @@ export const MouvementsPage: React.FC = () => {
       m.ministereDestinationNom || "Sortie Définitive"
     ]);
 
-    autoTable(doc, {
+    (doc as any).autoTable({
       head: [tableColumn],
       body: tableRows,
       startY: 45,
@@ -121,19 +114,24 @@ export const MouvementsPage: React.FC = () => {
     doc.save(`Historique_Mouvements_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  const handleSaveForm = async (dto: MouvementRequestDTO) => {
+  const handleSaveForm = async (dto: any) => {
     try {
       await mouvementAPI.creer(dto);
       setOpenForm(false);
-      showToast("success", "Le mouvement a été enregistré avec succès.");
+      showToast("success", "Le flux a été enregistré avec succès.");
       chargerDonnees();
-    } catch (err) {
-      showToast("error", "Une erreur est survenue lors de l'enregistrement du mouvement.");
+    } catch (err: any) {
+      console.error("❌ Échec API Mouvement:", err.response?.data || err);
+      const messageServeur = err.response?.data?.message 
+        || err.response?.data?.erreur 
+        || err.response?.data?.error 
+        || "Erreur interne du serveur. Vérifiez les champs envoyés.";
+      showToast("error", messageServeur);
     }
   };
 
   return (
-    <div className="p-8 w-full bg-slate-50/50 min-h-screen relative overflow-hidden">
+    <div className="p-8 w-full bg-slate-50/50 min-h-screen relative overflow-hidden font-sans">
       <div className="mx-auto max-w-7xl space-y-6">
         
         {/* Header */}
@@ -153,7 +151,6 @@ export const MouvementsPage: React.FC = () => {
               <Download className="h-4 w-4 text-slate-500" /> Exporter PDF
             </button>
             
-            {/* 🔐 BOUTON PROTÉGÉ */}
             <button
               onClick={() => {
                 if (!canCreate) {
@@ -230,7 +227,7 @@ export const MouvementsPage: React.FC = () => {
                       <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-gray-100 text-gray-400">
                         <ArrowLeftRight className="h-6 w-6" />
                       </div>
-                      <p className="mt-3 text-sm font-medium text-gray-600">Aucun mouvement trouvé</p>
+                      <p className="mt-3 text-sm font-medium text-gray-600">Aucun flux trouvé</p>
                     </td>
                   </tr>
                 ) : (
@@ -282,18 +279,17 @@ export const MouvementsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Modals & Composants globaux */}
       {openForm && (
         <MouvementForm
           biens={biens}
           ministeres={ministeres}
           onClose={() => setOpenForm(false)}
           onSave={handleSaveForm}
+          showToast={showToast} 
         />
       )}
       {details && <DetailsPanel m={details} onClose={() => setDetails(null)} />}
       
-      {/* Modale Accès Refusé */}
       {deniedAction && (
         <AccessDeniedModal 
           actionLabel={deniedAction} 
@@ -301,13 +297,12 @@ export const MouvementsPage: React.FC = () => {
         />
       )}
 
-      {/* Toast Notification (Remplace les alerts) */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-4 rounded-xl shadow-xl border animate-fade-in ${
+        <div className={`fixed bottom-6 right-6 z-[100] flex max-w-md items-start gap-3 px-5 py-4 rounded-xl shadow-2xl border animate-fade-in ${
           toast.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'
         }`}>
-          {toast.type === 'success' ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <AlertTriangle className="h-5 w-5 text-red-600" />}
-          <p className="text-sm font-bold">{toast.message}</p>
+          {toast.type === 'success' ? <CheckCircle2 className="h-5 w-5 mt-0.5 shrink-0 text-emerald-600" /> : <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 text-red-600" />}
+          <p className="text-sm font-bold leading-tight">{toast.message}</p>
         </div>
       )}
 
@@ -340,47 +335,113 @@ function StatCard({ icon: Icon, label, value, tone }: { icon: any; label: string
 }
 
 function TypeMouvementBadge({ type }: { type: TypeMouvement }) {
-  const styles: Record<TypeMouvement, string> = {
-    [TypeMouvement.AFFECTATION]: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    [TypeMouvement.TRANSFERT]: "bg-sky-50 text-sky-700 border-sky-200",
-    [TypeMouvement.REFORME]: "bg-red-50 text-red-700 border-red-200",
+  const styles: Record<string, string> = {
+    AFFECTATION: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    TRANSFERT: "bg-sky-50 text-sky-700 border-sky-200",
+    REFORME: "bg-red-50 text-red-700 border-red-200",
   };
-  const dots: Record<TypeMouvement, string> = {
-    [TypeMouvement.AFFECTATION]: "bg-emerald-500",
-    [TypeMouvement.TRANSFERT]: "bg-sky-500",
-    [TypeMouvement.REFORME]: "bg-red-500",
+  const dots: Record<string, string> = {
+    AFFECTATION: "bg-emerald-500",
+    TRANSFERT: "bg-sky-500",
+    REFORME: "bg-red-500",
   };
 
+  const typeStr = String(type).toUpperCase();
+
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold border ${styles[type]}`}>
-      <span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${dots[type]}`} />
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold border ${styles[typeStr] || styles.TRANSFERT}`}>
+      <span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${dots[typeStr] || dots.TRANSFERT}`} />
       {type}
     </span>
   );
 }
 
-/* ---------- MODAL FORMULAIRE ---------- */
+/* ---------- MODAL FORMULAIRE (ULTRA-SÉCURISÉ) ---------- */
 
 const inputCls = "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition";
 
-function MouvementForm({ biens, ministeres, onClose, onSave }: { 
+function MouvementForm({ biens, ministeres, onClose, onSave, showToast }: { 
   biens: BienResponseDTO[];
   ministeres: MinistereResponseDTO[];
   onClose: () => void; 
-  onSave: (dto: MouvementRequestDTO) => void;
+  onSave: (dto: any) => void;
+  showToast: (type: 'success' | 'error', message: string) => void; 
 }) {
-  const [dto, setDto] = useState<MouvementRequestDTO>({
-    bienId: '', type: TypeMouvement.TRANSFERT, ministereSourceId: '', ministereDestinationId: '',
-    motif: '', observations: '', raisonReforme: '', valeurResiduelle: 0
+  const [dto, setDto] = useState<any>({
+    bienId: '', 
+    type: 'TRANSFERT', 
+    ministereSourceId: '', 
+    ministereDestinationId: '',
+    motif: '', 
+    observations: '', 
+    raisonReforme: '', 
+    valeurResiduelle: 0
   });
 
-  const isReforme = dto.type === TypeMouvement.REFORME;
-  const needsSource = dto.type === TypeMouvement.TRANSFERT || dto.type === TypeMouvement.REFORME;
-  const needsDestination = dto.type === TypeMouvement.TRANSFERT || dto.type === TypeMouvement.AFFECTATION;
+  const currentType = String(dto.type).toUpperCase();
+  const isReforme = currentType === 'REFORME';
+  const needsSource = currentType === 'TRANSFERT' || currentType === 'REFORME' || currentType === 'AFFECTATION';
+  const needsDestination = currentType === 'TRANSFERT' || currentType === 'AFFECTATION';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(dto);
+
+    // --- 1. VALIDATIONS MANUELLES STRICTES (Pour éviter le plantage du serveur) ---
+    if (!dto.bienId) {
+      showToast("error", "Veuillez sélectionner le matériel concerné.");
+      return;
+    }
+    if (!dto.motif || dto.motif.trim() === '') {
+      showToast("error", "Le motif de l'opération est obligatoire.");
+      return;
+    }
+    if (needsSource && !dto.ministereSourceId) {
+      showToast("error", "Veuillez sélectionner le Ministère d'origine.");
+      return;
+    }
+    if (needsDestination && !dto.ministereDestinationId) {
+      showToast("error", "Veuillez sélectionner le Ministère de destination.");
+      return;
+    }
+    if (currentType === 'TRANSFERT' && dto.ministereSourceId === dto.ministereDestinationId) {
+      showToast("error", "La source et la destination ne peuvent pas être identiques.");
+      return;
+    }
+    if (isReforme && (!dto.raisonReforme || dto.raisonReforme.trim() === '')) {
+      showToast("error", "Veuillez préciser la raison de la réforme.");
+      return;
+    }
+
+    // Fonction magique pour s'assurer que si le Java attend un Long on envoie un Number,
+    // et s'il attend un UUID on envoie un String. Ça empêche 99% des erreurs Jackson !
+    const formatId = (id: string) => /^\d+$/.test(id) ? Number(id) : id;
+
+    // --- 2. CONSTRUCTION DU PAYLOAD GARANTI SANS ERREUR JACKSON ---
+    const payloadClean: Record<string, any> = {
+      bienId: formatId(dto.bienId),
+      type: currentType,
+      motif: dto.motif.trim()
+    };
+
+    // On n'ajoute les propriétés optionnelles QUE si elles existent vraiment
+    if (dto.observations && dto.observations.trim() !== '') {
+      payloadClean.observations = dto.observations.trim();
+    }
+    
+    if (needsSource) {
+      payloadClean.ministereSourceId = formatId(dto.ministereSourceId);
+    }
+    if (needsDestination) {
+      payloadClean.ministereDestinationId = formatId(dto.ministereDestinationId);
+    }
+    
+    if (isReforme) {
+      payloadClean.raisonReforme = dto.raisonReforme.trim();
+      payloadClean.valeurResiduelle = dto.valeurResiduelle ? Number(dto.valeurResiduelle) : 0;
+    }
+
+    console.log("Envoi du payload ultra-sécurisé :", payloadClean);
+    onSave(payloadClean);
   };
 
   return (
@@ -388,30 +449,36 @@ function MouvementForm({ biens, ministeres, onClose, onSave }: {
       <form onSubmit={handleSubmit} className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2"><ArrowLeftRight className="text-slate-500 h-5 w-5"/>Enregistrer un Mouvement</h3>
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <ArrowLeftRight className="text-slate-500 h-5 w-5"/>Enregistrer un Flux
+            </h3>
             <p className="mt-1 text-xs text-gray-500">Déclarer un transfert, une affectation ou une réforme de matériel.</p>
           </div>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         <div className="grid grid-cols-1 gap-5 p-6 sm:grid-cols-2 max-h-[70vh] overflow-y-auto">
           
           <Field label="Bien concerné" full>
-            <select required className={inputCls} onChange={e => setDto({...dto, bienId: e.target.value})}>
+            <select required className={inputCls} value={dto.bienId} onChange={e => setDto({...dto, bienId: e.target.value})}>
               <option value="">Sélectionner le matériel...</option>
               {biens.map(b => <option key={b.id} value={b.id}>{b.code} - {b.designation}</option>)}
             </select>
           </Field>
 
-          <Field label="Type de mouvement">
-            <select required className={inputCls} value={dto.type} onChange={e => setDto({...dto, type: e.target.value as TypeMouvement})}>
-              {Object.values(TypeMouvement).map(t => <option key={t} value={t}>{t}</option>)}
+          <Field label="Type de flux">
+            <select required className={inputCls} value={dto.type} onChange={e => setDto({...dto, type: e.target.value})}>
+              <option value="AFFECTATION">AFFECTATION</option>
+              <option value="TRANSFERT">TRANSFERT</option>
+              <option value="REFORME">REFORME</option>
             </select>
           </Field>
 
           {needsSource && (
             <Field label="Ministère Source (Détenteur actuel)">
-              <select required={needsSource} className={inputCls} onChange={e => setDto({...dto, ministereSourceId: e.target.value})}>
+              <select required={needsSource} className={inputCls} value={dto.ministereSourceId || ""} onChange={e => setDto({...dto, ministereSourceId: e.target.value})}>
                 <option value="">Sélectionner la source...</option>
                 {ministeres.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
               </select>
@@ -420,7 +487,7 @@ function MouvementForm({ biens, ministeres, onClose, onSave }: {
 
           {needsDestination && (
             <Field label="Ministère Destination (Nouveau détenteur)">
-              <select required={needsDestination} className={inputCls} onChange={e => setDto({...dto, ministereDestinationId: e.target.value})}>
+              <select required={needsDestination} className={inputCls} value={dto.ministereDestinationId || ""} onChange={e => setDto({...dto, ministereDestinationId: e.target.value})}>
                 <option value="">Sélectionner le cessionnaire...</option>
                 {ministeres.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
               </select>
@@ -428,28 +495,30 @@ function MouvementForm({ biens, ministeres, onClose, onSave }: {
           )}
 
           <Field label="Motif de l'opération" full>
-            <input required type="text" className={inputCls} placeholder="ex: Réaffectation de service, Fin de déploiement..." onChange={e => setDto({...dto, motif: e.target.value})} />
+            <input required type="text" className={inputCls} value={dto.motif} placeholder="ex: Déploiement initial, Réaffectation..." onChange={e => setDto({...dto, motif: e.target.value})} />
           </Field>
 
           {isReforme && (
             <>
-              <Field label="Raison de la réforme (Si applicable)" full>
-                <input required type="text" className={inputCls} placeholder="ex: Obsolescence technique, Matériel vétuste..." onChange={e => setDto({...dto, raisonReforme: e.target.value})} />
+              <Field label="Raison de la réforme" full>
+                <input required={isReforme} type="text" className={inputCls} value={dto.raisonReforme || ""} placeholder="ex: Obsolescence, Matériel hors-service..." onChange={e => setDto({...dto, raisonReforme: e.target.value})} />
               </Field>
-              <Field label="Valeur Résiduelle Estimée (MRU)">
-                <input type="number" className={inputCls} onChange={e => setDto({...dto, valeurResiduelle: Number(e.target.value)})} />
+              <Field label="Valeur Résiduelle (MRU)">
+                <input type="number" className={inputCls} value={dto.valeurResiduelle || 0} onChange={e => setDto({...dto, valeurResiduelle: Number(e.target.value)})} />
               </Field>
             </>
           )}
 
           <Field label="Observations additionnelles" full>
-            <textarea className={`${inputCls} min-h-20`} placeholder="Références PV, état du bien lors du transfert..." onChange={e => setDto({...dto, observations: e.target.value})} />
+            <textarea className={`${inputCls} min-h-20`} value={dto.observations || ""} placeholder="Notes, état du matériel..." onChange={e => setDto({...dto, observations: e.target.value})} />
           </Field>
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4 rounded-b-2xl">
           <button type="button" onClick={onClose} className="rounded-xl bg-white border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">Annuler</button>
-          <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-slate-800 flex items-center gap-2"><FileText className="h-4 w-4"/>Valider l'opération</button>
+          <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-slate-800 flex items-center gap-2">
+            <FileText className="h-4 w-4"/>Valider l'opération
+          </button>
         </div>
       </form>
     </div>
@@ -510,8 +579,8 @@ function DetailsPanel({ m, onClose }: { m: MouvementResponseDTO; onClose: () => 
              </section>
           )}
 
-          <section className="text-xs text-gray-400 border-t border-gray-100 pt-5 mt-auto">
-            Enregistré le {new Date(m.dateCreation).toLocaleString()} par {m.creeParNom}
+          <section className="text-xs text-gray-400 border-t border-gray-100 pt-5 mt-auto font-mono">
+            Enregistré le {new Date(m.dateCreation).toLocaleDateString("fr-FR")} par {m.creeParNom}
           </section>
         </div>
       </div>
@@ -529,7 +598,7 @@ function Field({ label, full, children }: { label: string; full?: boolean; child
 }
 
 function InfoRow({ icon: Icon, label, value, tone }: { icon: any; label: string; value: string; tone?: string }) {
-    const valueClass = tone === "success" ? "text-emerald-700 font-bold" : tone === "danger" ? "text-red-700 font-bold" : "text-slate-900 font-semibold";
+  const valueClass = tone === "success" ? "text-emerald-700 font-bold" : tone === "danger" ? "text-red-700 font-bold" : "text-slate-900 font-semibold";
   return (
     <div className="flex items-start gap-3">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />

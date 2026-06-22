@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { LoginResponseDTO } from '../types';
 import { isTokenValid } from '../types/utils/tokenUtils';
 
-// 1. 🟢 DÉFINITION STRICTE DES RÔLES (Copiée sur ton Enum Java UserRole)
+// 1. 🟢 DÉFINITION STRICTE DES RÔLES
 export type UserRole = 'ADMIN' | 'GESTIONNAIRE' | 'AUDITEUR' | 'CONSULTANT';
 
 // 2. 🟢 ON FORCE TYPESCRIPT à savoir que "user.role" est l'un de ces 4 rôles
@@ -16,7 +16,7 @@ interface AuthContextType {
   login: (data: LoginResponseDTO) => void;
   logout: () => void;
   loading: boolean;
-  checkAuth: () => void; // Ajout utile pour rafraîchir les droits à la volée
+  checkAuth: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,7 +24,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // 🛡️ BOUCLIER DE NORMALISATION
+  const sanitizeUser = (rawUser: any): AuthUser => {
+    const safeRole = (rawUser?.role ? String(rawUser.role).trim().toUpperCase() : 'CONSULTANT') as UserRole;
+    return {
+      ...rawUser,
+      role: safeRole
+    };
+  };
 
   const checkAuth = () => {
     const savedToken = localStorage.getItem("token");
@@ -33,8 +42,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (savedToken && savedUser && isTokenValid(savedToken)) {
       try {
         const parsedUser = JSON.parse(savedUser);
+        const safeUser = sanitizeUser(parsedUser);
+
         setToken(savedToken);
-        setUser(parsedUser as AuthUser);
+        setUser(safeUser);
       } catch (error) {
         console.error("Erreur de lecture du Storage Utilisateur :", error);
         cleanSession();
@@ -47,6 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const cleanSession = () => {
@@ -58,16 +70,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = (data: LoginResponseDTO) => {
     const { token: newToken, ...userData } = data;
+    const safeUser = sanitizeUser(userData);
 
-    // Sauvegarde Storage
     localStorage.setItem("token", newToken);
-    localStorage.setItem("user", JSON.stringify(userData));
+    localStorage.setItem("user", JSON.stringify(safeUser));
 
-    // Mise à jour State
     setToken(newToken);
-    setUser(userData as AuthUser);
+    setUser(safeUser);
 
-    // Redirection propre
     window.location.href = "/";
   };
 
@@ -90,3 +100,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+export default AuthProvider;
