@@ -29,7 +29,18 @@ services:
       - patrimoine-network
 
   # 3. خدمة الواجهة الأمامية (React/Vite Frontend)
-
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: patrimoine-front-container
+    ports:
+      # ربط المنفذ 5173 في جهازك بمنفذ 80 الخاص بـ Nginx
+      - "5173:80" 
+    depends_on:
+      - backend
+    networks:
+      - patrimoine-network
 
 # تعريف الشبكة هنا هو "السر" الذي يمنع ظهور الخطأ
 networks:
