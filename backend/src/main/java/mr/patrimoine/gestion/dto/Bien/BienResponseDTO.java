@@ -29,6 +29,7 @@ public class BienResponseDTO {
     private String fournisseur;
     private String numeroSerie;
     private String observations;
+    private String imageUrl;
     private LocalDateTime dateCreation;
     private LocalDateTime dateModification;
 }

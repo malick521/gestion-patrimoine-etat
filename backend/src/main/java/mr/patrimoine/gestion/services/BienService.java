@@ -14,12 +14,22 @@ import mr.patrimoine.gestion.repository.CategorieRepository;
 import mr.patrimoine.gestion.repository.MinistereRepository;
 import mr.patrimoine.gestion.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 @Service
 public class BienService {
+
+    @Value("${app.upload.dir}")
+    private String uploadDir;
 
     @Autowired
     private BienRepository bienRepository;
@@ -81,6 +91,52 @@ public class BienService {
                 userEmail != null ? userEmail : "SYSTEM",
                 "CREATION_BIEN", "Bien", saved.getId(),
                 "Création du bien : " + saved.getDesignation());
+
+        return toResponseDTO(saved, ministere, categorie);
+    }
+
+
+    public BienResponseDTO uploadImage(String id, MultipartFile file, String userEmail) {
+
+        // 1 — Bien existe ?
+        BienEntity bien = bienRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Bien", id));
+
+        // 2 — Vérifier que c'est bien une image
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new BusinessException("Le fichier doit être une image !");
+        }
+
+        // 3 — Générer un nom unique
+        String extension = file.getOriginalFilename()
+                .substring(file.getOriginalFilename().lastIndexOf("."));
+        String filename = id + "_" + System.currentTimeMillis() + extension;
+
+        // 4 — Sauvegarder sur disque
+        try {
+            Path uploadPath = Paths.get(uploadDir);
+            Files.createDirectories(uploadPath);
+            Files.copy(file.getInputStream(),
+                    uploadPath.resolve(filename),
+                    StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new BusinessException("Erreur lors de l'upload de l'image !");
+        }
+
+        // 5 — Sauvegarder l'URL en base
+        bien.setImageUrl("/api/biens/images/" + filename);
+        BienEntity saved = bienRepository.save(bien);
+
+        // 6 — Log
+        auditLogService.log(null, userEmail,
+                "UPLOAD_IMAGE_BIEN", "Bien", id,
+                "Upload image pour bien : " + bien.getDesignation());
+
+        MinistereEntity ministere = ministereRepository
+                .findById(saved.getMinistereId()).orElse(null);
+        CategorieEntity categorie = categorieRepository
+                .findById(saved.getCategorieId()).orElse(null);
 
         return toResponseDTO(saved, ministere, categorie);
     }

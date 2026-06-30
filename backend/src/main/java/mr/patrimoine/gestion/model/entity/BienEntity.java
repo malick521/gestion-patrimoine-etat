@@ -52,6 +52,7 @@ public class BienEntity {
     private String fournisseur;
     private String numeroSerie;
     private String observations;
+    private String imageUrl;
 
     @CreatedDate
     private LocalDateTime dateCreation;
