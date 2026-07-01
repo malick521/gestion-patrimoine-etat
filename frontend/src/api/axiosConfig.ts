@@ -1,30 +1,39 @@
-import axios from 'axios';
+import axios, { 
+  AxiosInstance, 
+  InternalAxiosRequestConfig, 
+  AxiosResponse, 
+  AxiosError 
+} from 'axios';
+
 const API_URL = 'http://localhost:8080/api';
 
-// @ts-ignore
-const axiosInstance = axios.create({
+// 1. On retire le @ts-ignore et on déclare explicitement le type AxiosInstance
+const axiosInstance: AxiosInstance = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+// 2. On remplace "any" par InternalAxiosRequestConfig (le vrai type attendu par Axios)
 axiosInstance.interceptors.request.use(
-  (config: any) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('token');
     if (token && config.headers) {
+      // Axios type correctement les headers ici
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error: any) => {
+  (error: AxiosError) => {
     return Promise.reject(error);
   }
 );
 
+// 3. On remplace "any" par AxiosResponse et AxiosError
 axiosInstance.interceptors.response.use(
-  (response: any) => response,
-  (error: any) => {
+  (response: AxiosResponse) => response,
+  (error: AxiosError) => {
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('token');
       window.location.href = '/login';

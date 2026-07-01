@@ -5,19 +5,30 @@ import { ministereAPI } from '../../api/ministereAPI';
 import { categorieAPI } from '../../api/categorieAPI';
 import { BienRequestDTO, EtatBien, MinistereResponseDTO, CategorieResponseDTO } from '../../types';
 import { ArrowLeft, Save, Package, AlertTriangle } from 'lucide-react';
-
+import LocationPicker from "../../components/common/LocationPicker";
+import { UploadCloud } from 'lucide-react'; 
 export const BienFormPage: React.FC = () => {
+
   const navigate = useNavigate();
   const [ministeres, setMinisteres] = useState<MinistereResponseDTO[]>([]);
   const [categories, setCategories] = useState<CategorieResponseDTO[]>([]);
-  
-  // State الجديد للتحكم في رسالة الخطأ
+const [imageFile, setImageFile] = useState<File | null>(null);  // State الجديد للتحكم في رسالة الخطأ
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   const [dto, setDto] = useState<BienRequestDTO>({
-    code: '', designation: '', description: '', valeurAcquisition: 0,
+    code: '',
+    designation: '',
+    description: '',
+    valeurAcquisition: 0,
     dateAcquisition: new Date().toISOString().split('T')[0],
-    etat: EtatBien.NEUF, localisation: '', categorieId: '', ministereId: ''
+    etat: EtatBien.NEUF,
+
+    localisation: '',
+    latitude: null,
+    longitude: null,
+
+    categorieId: '',
+    ministereId: ''
   });
 
   useEffect(() => {
@@ -30,12 +41,17 @@ export const BienFormPage: React.FC = () => {
     setErrorMsg(null); // مسح أي خطأ سابق عند المحاولة من جديد
     
     try {
-      await bienAPI.creer(dto);
+      await bienAPI.creer(dto, imageFile);
       navigate('/biens');
     } catch (err: any) {
       // محاولة قراءة رسالة الخطأ القادمة من السيرفر، أو عرض رسالة افتراضية
       const serverMessage = err.response?.data?.message || err.response?.data?.erreur;
       setErrorMsg(serverMessage || "Impossible d'enregistrer l'actif. Veuillez vérifier vos informations ou l'état du serveur.");
+    }
+  };
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) {
+      setImageFile(e.target.files[0]);
     }
   };
 
@@ -109,17 +125,72 @@ export const BienFormPage: React.FC = () => {
               {Object.values(EtatBien).map(e => <option key={e} value={e}>{e}</option>)}
             </select>
           </div>
+  <div className="md:col-span-2">
+    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+      Localisation Physique
+    </label>
 
-          <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">Localisation Physique</label>
-            <input type="text" onChange={e => setDto({...dto, localisation: e.target.value})} required className={inputCls} placeholder="Ex: Bâtiment A, Bureau 402" />
-          </div>
+ <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+  <LocationPicker dto={dto} setDto={setDto} />
+</div>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">   
+    <input
+      type="text"
+      readOnly
+      value={dto.latitude ?? ""}
+      placeholder="Latitude"
+      className={`${inputCls} bg-slate-50`}
+    />
+
+    <input
+      type="text"
+      readOnly
+      value={dto.longitude ?? ""}
+      placeholder="Longitude"
+      className={`${inputCls} bg-slate-50`}
+    />
+    </div>
+</div>
 
           <div className="md:col-span-2">
             <label className="block text-xs font-bold text-slate-700 mb-1.5">Description (Optionnel)</label>
             <textarea onChange={e => setDto({...dto, description: e.target.value})} className={`${inputCls} min-h-24`} placeholder="Spécificités techniques, numéro de série..." />
           </div>
         </div>
+
+
+<div className="md:col-span-2">
+  <label className="block text-xs font-bold text-slate-700 mb-2">
+    Photo du bien
+  </label>
+
+  {/* Zone de téléchargement stylisée */}
+  <label 
+    htmlFor="image-upload" 
+    className="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer bg-slate-50/50 hover:bg-slate-100 hover:border-slate-400 transition-all group"
+  >
+    <div className="flex flex-col items-center justify-center">
+      <div className="p-3 mb-3 rounded-full bg-white shadow-sm border border-slate-200 text-slate-600 group-hover:scale-105 group-hover:text-slate-900 transition-all">
+        <UploadCloud className="w-6 h-6" />
+      </div>
+      <p className="mb-1 text-sm text-slate-600 text-center">
+        <span className="font-bold text-slate-900">Cliquez pour ajouter une photo</span> ou glissez-la ici
+      </p>
+      <p className="text-xs text-slate-500">
+        PNG, JPG ou SVG (Max. 5MB)
+      </p>
+    </div>
+    
+    {/* Input réel, masqué par "hidden" */}
+    <input 
+      id="image-upload" 
+      type="file" 
+      accept="image/*" 
+      onChange={handleImageChange} 
+      className="hidden" 
+    />
+  </label>
+</div>
 
         <div className="mt-8 flex justify-end pt-5 border-t border-slate-100">
           <button type="button" onClick={() => navigate('/biens')} className="mr-3 px-6 py-2.5 border border-slate-300 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition">

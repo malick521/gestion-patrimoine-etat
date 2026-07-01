@@ -90,6 +90,8 @@ export interface BienRequestDTO {
   dateAcquisition: string;
   etat: EtatBien;
   localisation: string;
+  latitude: number | null;
+  longitude: number | null;
   categorieId: string;
   ministereId: string;
   fournisseur?: string;
@@ -107,6 +109,9 @@ export interface BienResponseDTO {
   dateAcquisition: string;
   etat: EtatBien;
   localisation: string;
+  latitude: number | null;
+  longitude: number | null;
+
   categorieId: string;
   categorieNom: string;
   ministereId: string;

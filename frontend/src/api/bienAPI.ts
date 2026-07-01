@@ -12,9 +12,32 @@ export const bienAPI = {
     return response.data;
   },
 
-  creer: async (dto: BienRequestDTO): Promise<BienResponseDTO> => {
-    const response = await axiosInstance.post<BienResponseDTO>('/biens', dto);
-    return response.data;
+  creer: async (dto: BienRequestDTO, imageFile?: File | null): Promise<BienResponseDTO> => {
+      const formData = new FormData();
+
+      // 1. Ajouter les données du formulaire (DTO) en tant que Blob JSON
+      formData.append(
+        "bien", // ⚠️ Ce nom doit correspondre exactement à ce que le backend attend (ex: @RequestPart("bien"))
+        new Blob([JSON.stringify(dto)], {
+          type: "application/json",
+        })
+      );
+
+      // 2. Ajouter le fichier image s'il a été sélectionné
+      if (imageFile) {
+        // ⚠️ "file" ou "image" : assurez-vous que le nom correspond à votre backend
+        formData.append("file", imageFile); 
+      }
+
+      // 3. Envoyer la requête
+      const response = await axiosInstance.post<BienResponseDTO>('/biens', formData, {
+        headers: {
+          // Axios définit généralement le Content-Type automatiquement avec FormData,
+          // mais c'est une bonne pratique de s'assurer qu'il gère le multipart
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+      return response.data;
   },
 
   modifier: async (id: string, dto: BienRequestDTO): Promise<BienResponseDTO> => {
