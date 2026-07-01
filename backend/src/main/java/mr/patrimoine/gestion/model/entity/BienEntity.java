@@ -53,6 +53,11 @@ public class BienEntity {
     private String numeroSerie;
     private String observations;
     private String imageUrl;
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
 
     @CreatedDate
     private LocalDateTime dateCreation;

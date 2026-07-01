@@ -46,22 +46,46 @@ public class BienService {
     @Autowired
     private AuditLogService auditLogService;
 
-    // ✅ CORRECTION ICI : Ajout du paramètre userEmail
-    public BienResponseDTO creer(BienRequestDTO dto, String userEmail) {
+    // ==================== MÉTHODE PRIVÉE POUR L'UPLOAD ====================
+    private String sauvegarderImageSurDisque(String id, MultipartFile file) {
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new BusinessException("Le fichier doit être une image !");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        String extension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+        
+        String filename = id + "_" + System.currentTimeMillis() + extension;
+
+        try {
+            Path uploadPath = Paths.get(uploadDir);
+            Files.createDirectories(uploadPath);
+            Files.copy(file.getInputStream(),
+                    uploadPath.resolve(filename),
+                    StandardCopyOption.REPLACE_EXISTING);
+            return "/api/biens/images/" + filename;
+        } catch (IOException e) {
+            throw new BusinessException("Erreur lors de l'upload de l'image !");
+        }
+    }
+
+    // ==================== CRÉER ====================
+    public BienResponseDTO creer(BienRequestDTO dto, MultipartFile imageFile, String userEmail) {
 
         if (bienRepository.existsByCode(dto.getCode())) {
             throw new BusinessException("Un bien avec le code " + dto.getCode() + " existe déjà");
         }
 
-        // 2 — Ministère existe ?
         MinistereEntity ministere = ministereRepository.findById(dto.getMinistereId())
                 .orElseThrow(() -> new ResourceNotFoundException("Ministere", dto.getMinistereId()));
 
-        // 3 — Catégorie existe ?
         CategorieEntity categorie = categorieRepository.findById(dto.getCategorieId())
                 .orElseThrow(() -> new ResourceNotFoundException("Categorie", dto.getCategorieId()));
 
-        // 4 — Construire l'entité
         BienEntity bien = BienEntity.builder()
                 .code(dto.getCode().toUpperCase())
                 .designation(dto.getDesignation())
@@ -71,6 +95,8 @@ public class BienService {
                 .dateAcquisition(dto.getDateAcquisition())
                 .etat(dto.getEtat() != null ? dto.getEtat() : EtatBien.BON)
                 .localisation(dto.getLocalisation())
+                .latitude(dto.getLatitude())
+                .longitude(dto.getLongitude())
                 .categorieId(dto.getCategorieId())
                 .ministereId(dto.getMinistereId())
                 .fournisseur(dto.getFournisseur())
@@ -80,7 +106,13 @@ public class BienService {
 
         BienEntity saved = bienRepository.save(bien);
 
-        // ✅ CORRECTION ICI : Récupération de l'utilisateur pour l'AuditLog
+        // Si une image est fournie lors de la création, on la sauvegarde
+        if (imageFile != null && !imageFile.isEmpty()) {
+            String imageUrl = sauvegarderImageSurDisque(saved.getId(), imageFile);
+            saved.setImageUrl(imageUrl);
+            saved = bienRepository.save(saved);
+        }
+
         UserEntity user = null;
         if (userEmail != null) {
             user = userRepository.findByEmail(userEmail).orElse(null);
@@ -95,40 +127,17 @@ public class BienService {
         return toResponseDTO(saved, ministere, categorie);
     }
 
-
+    // ==================== UPLOAD IMAGE SEULE ====================
     public BienResponseDTO uploadImage(String id, MultipartFile file, String userEmail) {
 
-        // 1 — Bien existe ?
         BienEntity bien = bienRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Bien", id));
 
-        // 2 — Vérifier que c'est bien une image
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new BusinessException("Le fichier doit être une image !");
-        }
-
-        // 3 — Générer un nom unique
-        String extension = file.getOriginalFilename()
-                .substring(file.getOriginalFilename().lastIndexOf("."));
-        String filename = id + "_" + System.currentTimeMillis() + extension;
-
-        // 4 — Sauvegarder sur disque
-        try {
-            Path uploadPath = Paths.get(uploadDir);
-            Files.createDirectories(uploadPath);
-            Files.copy(file.getInputStream(),
-                    uploadPath.resolve(filename),
-                    StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            throw new BusinessException("Erreur lors de l'upload de l'image !");
-        }
-
-        // 5 — Sauvegarder l'URL en base
-        bien.setImageUrl("/api/biens/images/" + filename);
+        // Utilisation de la méthode extraite
+        String imageUrl = sauvegarderImageSurDisque(id, file);
+        bien.setImageUrl(imageUrl);
         BienEntity saved = bienRepository.save(bien);
 
-        // 6 — Log
         auditLogService.log(null, userEmail,
                 "UPLOAD_IMAGE_BIEN", "Bien", id,
                 "Upload image pour bien : " + bien.getDesignation());
@@ -228,26 +237,20 @@ public class BienService {
 
     // ==================== MODIFIER ====================
     public BienResponseDTO modifier(String id, BienRequestDTO dto) {
-
-        // 1 — Bien existe ?
         BienEntity bien = bienRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Bien", id));
 
-        // 2 — Code déjà pris par un autre ?
         if (!bien.getCode().equals(dto.getCode().toUpperCase())
                 && bienRepository.existsByCode(dto.getCode())) {
             throw new BusinessException("Un bien avec le code " + dto.getCode() + " existe déjà");
         }
 
-        // 3 — Ministère existe ?
         MinistereEntity ministere = ministereRepository.findById(dto.getMinistereId())
                 .orElseThrow(() -> new ResourceNotFoundException("Ministere", dto.getMinistereId()));
 
-        // 4 — Catégorie existe ?
         CategorieEntity categorie = categorieRepository.findById(dto.getCategorieId())
                 .orElseThrow(() -> new ResourceNotFoundException("Categorie", dto.getCategorieId()));
 
-        // 5 — Mettre à jour
         bien.setCode(dto.getCode().toUpperCase());
         bien.setDesignation(dto.getDesignation());
         bien.setDescription(dto.getDescription());
@@ -267,14 +270,12 @@ public class BienService {
 
     // ==================== MODIFIER ETAT ====================
     public BienResponseDTO modifierEtat(String id, EtatBien etat, String userEmail) {
-
         UserEntity user = userRepository.findByEmail(userEmail).orElse(null);
 
         BienEntity bien = bienRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Bien", id));
 
         String ancienEtat = bien.getEtat().toString();
-
         bien.setEtat(etat);
 
         BienEntity saved = bienRepository.save(bien);
@@ -294,7 +295,6 @@ public class BienService {
 
     // ==================== SUPPRIMER ====================
     public void supprimer(String id, String userEmail) {
-
         UserEntity user = userRepository.findByEmail(userEmail).orElse(null);
 
         if (!bienRepository.existsById(id)) {
@@ -322,6 +322,9 @@ public class BienService {
                 .dateAcquisition(bien.getDateAcquisition())
                 .etat(bien.getEtat())
                 .localisation(bien.getLocalisation())
+                .latitude(bien.getLatitude())
+                .imageUrl(bien.getImageUrl())
+                .longitude(bien.getLongitude())
                 .categorieId(bien.getCategorieId())
                 .categorieNom(categorie != null ? categorie.getNom() : null)
                 .ministereId(bien.getMinistereId())

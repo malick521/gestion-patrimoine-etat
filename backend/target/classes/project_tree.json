@@ -1,0 +1,706 @@
+{
+  "generatedAt": "2026-06-14T19:34:30.137Z",
+  "rootPath": "/home/cheikh/Documents/gestion-patrimoine-etat/src/main/java",
+  "rootName": "java",
+  "metadata": {
+    "scanDurationMs": 63,
+    "effectiveSettings": {
+      "maxDepth": 6,
+      "followSymlinks": false,
+      "binaryHandling": "mark",
+      "iconMode": "bundled",
+      "exportFormats": [
+        "markdown",
+        "json",
+        "html"
+      ]
+    }
+  },
+  "stats": {
+    "files": 65,
+    "directories": 21,
+    "maxDepthReached": 5,
+    "ignored": 0,
+    "skipped": 0,
+    "skippedByReason": {
+      "binarySkipped": 0,
+      "symlinkSkipped": 0,
+      "circularSymlink": 0,
+      "permissionDenied": 0,
+      "fsError": 0
+    },
+    "totalSizeBytes": 130352,
+    "extensionCounts": {
+      ".java": 65
+    }
+  },
+  "nodes": [
+    {
+      "name": "mr",
+      "type": "directory",
+      "children": [
+        {
+          "name": "patrimoine",
+          "type": "directory",
+          "children": [
+            {
+              "name": "gestion",
+              "type": "directory",
+              "children": [
+                {
+                  "name": "config",
+                  "type": "directory",
+                  "children": [
+                    {
+                      "name": "JwtAuthFilter.java",
+                      "type": "file",
+                      "size": 2297,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "JwtUtil.java",
+                      "type": "file",
+                      "size": 2748,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "SecurityConfig.java",
+                      "type": "file",
+                      "size": 2333,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    }
+                  ],
+                  "isSymlink": false
+                },
+                {
+                  "name": "controller",
+                  "type": "directory",
+                  "children": [
+                    {
+                      "name": "AffectationController.java",
+                      "type": "file",
+                      "size": 3534,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "AuditLogController.java",
+                      "type": "file",
+                      "size": 2584,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "AuthController.java",
+                      "type": "file",
+                      "size": 1252,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "BienController.java",
+                      "type": "file",
+                      "size": 3412,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "CategorieController.java",
+                      "type": "file",
+                      "size": 2737,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "MaintenanceController.java",
+                      "type": "file",
+                      "size": 3383,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "MinistereController.java",
+                      "type": "file",
+                      "size": 2879,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "MouvementController.java",
+                      "type": "file",
+                      "size": 2774,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "UserController.java",
+                      "type": "file",
+                      "size": 2853,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    }
+                  ],
+                  "isSymlink": false
+                },
+                {
+                  "name": "dto",
+                  "type": "directory",
+                  "children": [
+                    {
+                      "name": "Affectation",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "AffectationRequestDTO.java",
+                          "type": "file",
+                          "size": 607,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "AffectationResponseDTO.java",
+                          "type": "file",
+                          "size": 808,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        }
+                      ],
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "AuditLog",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "AuditLogResponseDTO.java",
+                          "type": "file",
+                          "size": 580,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        }
+                      ],
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "Auth",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "LoginRequestDTO.java",
+                          "type": "file",
+                          "size": 433,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "LoginResponseDTO.java",
+                          "type": "file",
+                          "size": 298,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        }
+                      ],
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "Bien",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "BienRequestDTO.java",
+                          "type": "file",
+                          "size": 1095,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "BienResponseDTO.java",
+                          "type": "file",
+                          "size": 907,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        }
+                      ],
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "Categorie",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "CategorieRequestDTO.java",
+                          "type": "file",
+                          "size": 547,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "CategorieResponseDTO.java",
+                          "type": "file",
+                          "size": 397,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        }
+                      ],
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "Maintenance",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "MaintenanceRequestDTO.java",
+                          "type": "file",
+                          "size": 1024,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "MaintenanceResponseDTO.java",
+                          "type": "file",
+                          "size": 862,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        }
+                      ],
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "Ministere",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "MinistereRequestDTO.java",
+                          "type": "file",
+                          "size": 574,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "MinistereResponseDTO.java",
+                          "type": "file",
+                          "size": 475,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        }
+                      ],
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "Mouvement",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "MouvementRequestDTO.java",
+                          "type": "file",
+                          "size": 683,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "MouvementResponseDTO.java",
+                          "type": "file",
+                          "size": 880,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        }
+                      ],
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "User",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "UserRequestDTO.java",
+                          "type": "file",
+                          "size": 806,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "UserResponseDTO.java",
+                          "type": "file",
+                          "size": 493,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        }
+                      ],
+                      "isSymlink": false
+                    }
+                  ],
+                  "isSymlink": false
+                },
+                {
+                  "name": "exceptions",
+                  "type": "directory",
+                  "children": [
+                    {
+                      "name": "BusinessException.java",
+                      "type": "file",
+                      "size": 183,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "GlobalExceptionHandler.java",
+                      "type": "file",
+                      "size": 2568,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "ResourceNotFoundException.java",
+                      "type": "file",
+                      "size": 326,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    }
+                  ],
+                  "isSymlink": false
+                },
+                {
+                  "name": "model",
+                  "type": "directory",
+                  "children": [
+                    {
+                      "name": "entity",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "AffectationEntity.java",
+                          "type": "file",
+                          "size": 1001,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "AuditLogEntity.java",
+                          "type": "file",
+                          "size": 710,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "BienEntity.java",
+                          "type": "file",
+                          "size": 1369,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "CategorieEntity.java",
+                          "type": "file",
+                          "size": 643,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "MaintenanceEntity.java",
+                          "type": "file",
+                          "size": 1105,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "MinistereEntity.java",
+                          "type": "file",
+                          "size": 798,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "MouvementEntity.java",
+                          "type": "file",
+                          "size": 1035,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "UserEntity.java",
+                          "type": "file",
+                          "size": 967,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        }
+                      ],
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "enums",
+                      "type": "directory",
+                      "children": [
+                        {
+                          "name": "EtatBien.java",
+                          "type": "file",
+                          "size": 151,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "StatutAffectation.java",
+                          "type": "file",
+                          "size": 117,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "StatutMaintenance.java",
+                          "type": "file",
+                          "size": 132,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "TypeBien.java",
+                          "type": "file",
+                          "size": 155,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "TypeMaintenance.java",
+                          "type": "file",
+                          "size": 120,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "TypeMouvement.java",
+                          "type": "file",
+                          "size": 136,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        },
+                        {
+                          "name": "UserRole.java",
+                          "type": "file",
+                          "size": 152,
+                          "extension": ".java",
+                          "isBinary": false,
+                          "isSymlink": false
+                        }
+                      ],
+                      "isSymlink": false
+                    }
+                  ],
+                  "isSymlink": false
+                },
+                {
+                  "name": "repository",
+                  "type": "directory",
+                  "children": [
+                    {
+                      "name": "AffectationRepository.java",
+                      "type": "file",
+                      "size": 922,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "AuditLogRepository.java",
+                      "type": "file",
+                      "size": 877,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "BienRepository.java",
+                      "type": "file",
+                      "size": 1009,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "CategorieRepository.java",
+                      "type": "file",
+                      "size": 640,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "MaintenanceRepository.java",
+                      "type": "file",
+                      "size": 1062,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "MinistereRepository.java",
+                      "type": "file",
+                      "size": 726,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "MouvementRepository.java",
+                      "type": "file",
+                      "size": 788,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "UserRepository.java",
+                      "type": "file",
+                      "size": 658,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    }
+                  ],
+                  "isSymlink": false
+                },
+                {
+                  "name": "services",
+                  "type": "directory",
+                  "children": [
+                    {
+                      "name": "AffectationService.java",
+                      "type": "file",
+                      "size": 8951,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "AuditLogService.java",
+                      "type": "file",
+                      "size": 4862,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "AuthService.java",
+                      "type": "file",
+                      "size": 4381,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "BienService.java",
+                      "type": "file",
+                      "size": 11813,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "CategorieService.java",
+                      "type": "file",
+                      "size": 4709,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "MaintenanceService.java",
+                      "type": "file",
+                      "size": 9084,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "MinistereService.java",
+                      "type": "file",
+                      "size": 5776,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "MouvementService.java",
+                      "type": "file",
+                      "size": 10199,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    },
+                    {
+                      "name": "UserService.java",
+                      "type": "file",
+                      "size": 7565,
+                      "extension": ".java",
+                      "isBinary": false,
+                      "isSymlink": false
+                    }
+                  ],
+                  "isSymlink": false
+                },
+                {
+                  "name": "GestionApplication.java",
+                  "type": "file",
+                  "size": 407,
+                  "extension": ".java",
+                  "isBinary": false,
+                  "isSymlink": false
+                }
+              ],
+              "isSymlink": false
+            }
+          ],
+          "isSymlink": false
+        }
+      ],
+      "isSymlink": false
+    }
+  ]
+}

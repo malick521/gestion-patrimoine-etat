@@ -7,7 +7,7 @@ import axios, {
 
 const API_URL = 'http://localhost:8080/api';
 
-// 1. On retire le @ts-ignore et on déclare explicitement le type AxiosInstance
+// 1. On déclare explicitement le type AxiosInstance
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: API_URL,
   headers: {
@@ -15,7 +15,7 @@ const axiosInstance: AxiosInstance = axios.create({
   },
 });
 
-// 2. On remplace "any" par InternalAxiosRequestConfig (le vrai type attendu par Axios)
+// 2. Utilisation de InternalAxiosRequestConfig (le vrai type attendu par Axios)
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('token');
@@ -30,7 +30,7 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// 3. On remplace "any" par AxiosResponse et AxiosError
+// 3. Utilisation de AxiosResponse et AxiosError
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError) => {

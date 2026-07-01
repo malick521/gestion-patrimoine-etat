@@ -31,10 +31,11 @@ public class BienRequestDTO {
 
     @NotBlank(message = "Localisation obligatoire")
     private String localisation;
-
+    private Double latitude;
+    private Double longitude;
     @NotBlank(message = "Catégorie obligatoire")
     private String categorieId;
-
+    private String imageUrl;
     @NotBlank(message = "Ministère obligatoire")
     private String ministereId;
 
