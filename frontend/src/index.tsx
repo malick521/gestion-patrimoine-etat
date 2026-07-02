@@ -5,7 +5,7 @@ import reportWebVitals from './reportWebVitals';
 
 import './index.css';  // <-- AJOUTE ÇA
 
-
+import 'leaflet/dist/leaflet.css';
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
