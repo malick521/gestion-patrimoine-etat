@@ -71,7 +71,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/biens/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
                         .requestMatchers(HttpMethod.PUT, "/api/biens/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
                         .requestMatchers(HttpMethod.PATCH, "/api/biens/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
-                        .requestMatchers(HttpMethod.DELETE, "/api/biens/**").hasRole("ADMIN")
+                        .requestMatchers("/api/biens/images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/biens/**").hasAnyRole("ADMIN","GESTIONNAIRE","AUDITEUR","CONSULTANT")
 
                         // ===== AFFECTATIONS =====
                         .requestMatchers(HttpMethod.GET, "/api/affectations/**").hasAnyRole("ADMIN", "GESTIONNAIRE", "AUDITEUR", "CONSULTANT")

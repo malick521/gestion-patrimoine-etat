@@ -7,13 +7,15 @@ import { BienRequestDTO, EtatBien, MinistereResponseDTO, CategorieResponseDTO } 
 import { ArrowLeft, Save, Package, AlertTriangle } from 'lucide-react';
 import LocationPicker from "../../components/common/LocationPicker";
 import { UploadCloud } from 'lucide-react'; 
+// ← ajoute ça
 export const BienFormPage: React.FC = () => {
 
   const navigate = useNavigate();
   const [ministeres, setMinisteres] = useState<MinistereResponseDTO[]>([]);
   const [categories, setCategories] = useState<CategorieResponseDTO[]>([]);
-const [imageFile, setImageFile] = useState<File | null>(null);  // State الجديد للتحكم في رسالة الخطأ
+  const [imageFile, setImageFile] = useState<File | null>(null);  // State الجديد للتحكم في رسالة الخطأ
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null); 
   
   const [dto, setDto] = useState<BienRequestDTO>({
     code: '',
@@ -21,7 +23,7 @@ const [imageFile, setImageFile] = useState<File | null>(null);  // State الج�
     description: '',
     valeurAcquisition: 0,
     dateAcquisition: new Date().toISOString().split('T')[0],
-    etat: EtatBien.NEUF,
+    etat: EtatBien.BON,
 
     localisation: '',
     latitude: null,
@@ -38,23 +40,42 @@ const [imageFile, setImageFile] = useState<File | null>(null);  // State الج�
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg(null); // مسح أي خطأ سابق عند المحاولة من جديد
-    
-    try {
-      await bienAPI.creer(dto, imageFile);
-      navigate('/biens');
-    } catch (err: any) {
-      // محاولة قراءة رسالة الخطأ القادمة من السيرفر، أو عرض رسالة افتراضية
-      const serverMessage = err.response?.data?.message || err.response?.data?.erreur;
-      setErrorMsg(serverMessage || "Impossible d'enregistrer l'actif. Veuillez vérifier vos informations ou l'état du serveur.");
-    }
-  };
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.length) {
-      setImageFile(e.target.files[0]);
-    }
-  };
+    setErrorMsg(null);
 
+    
+
+    try {
+        // 1 — Créer le bien en JSON
+        const bienCree = await bienAPI.creer(dto);
+
+        // 2 — Upload image si sélectionnée
+        if (imageFile) {
+            await bienAPI.uploadImage(bienCree.id, imageFile);
+        }
+
+        navigate('/biens');
+    } catch (err: any) {
+        const serverMessage = err.response?.data?.erreur
+            || err.response?.data?.message;
+        setErrorMsg(serverMessage || "Erreur lors de l'enregistrement.");
+    }
+};
+    
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) {
+        const file = e.target.files[0];
+
+        // Validation taille
+        if (file.size > 5 * 1024 * 1024) {
+            setErrorMsg("L'image ne doit pas dépasser 5MB !");
+            return;
+        }
+
+        setImageFile(file);
+        setImagePreview(URL.createObjectURL(file)); // ← génère l'aperçu
+        setErrorMsg(null);
+    }
+};
   const inputCls = "w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition";
 
   return (
@@ -164,32 +185,53 @@ const [imageFile, setImageFile] = useState<File | null>(null);  // State الج�
     Photo du bien
   </label>
 
-  {/* Zone de téléchargement stylisée */}
-  <label 
-    htmlFor="image-upload" 
-    className="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer bg-slate-50/50 hover:bg-slate-100 hover:border-slate-400 transition-all group"
-  >
-    <div className="flex flex-col items-center justify-center">
-      <div className="p-3 mb-3 rounded-full bg-white shadow-sm border border-slate-200 text-slate-600 group-hover:scale-105 group-hover:text-slate-900 transition-all">
-        <UploadCloud className="w-6 h-6" />
+  {/* Aperçu si image sélectionnée */}
+  {imagePreview ? (
+    <div className="relative w-full rounded-2xl border border-slate-200 overflow-hidden">
+      <img
+        src={imagePreview}
+        alt="Aperçu"
+        className="w-full max-h-64 object-contain bg-slate-50"
+      />
+      {/* Nom du fichier */}
+      <div className="px-4 py-2 bg-white border-t border-slate-100 flex items-center justify-between">
+        <span className="text-xs text-slate-500 truncate">
+          {imageFile?.name}
+        </span>
+        {/* Bouton supprimer */}
+        <button
+          type="button"
+          onClick={() => { setImageFile(null); setImagePreview(null); }}
+          className="text-xs text-red-500 font-bold hover:text-red-700 ml-2 shrink-0"
+        >
+          ✕ Supprimer
+        </button>
       </div>
-      <p className="mb-1 text-sm text-slate-600 text-center">
-        <span className="font-bold text-slate-900">Cliquez pour ajouter une photo</span> ou glissez-la ici
-      </p>
-      <p className="text-xs text-slate-500">
-        PNG, JPG ou SVG (Max. 5MB)
-      </p>
     </div>
-    
-    {/* Input réel, masqué par "hidden" */}
-    <input 
-      id="image-upload" 
-      type="file" 
-      accept="image/*" 
-      onChange={handleImageChange} 
-      className="hidden" 
-    />
-  </label>
+  ) : (
+    /* Zone upload — affichée seulement si pas d'image */
+    <label
+      htmlFor="image-upload"
+      className="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer bg-slate-50/50 hover:bg-slate-100 hover:border-slate-400 transition-all group"
+    >
+      <div className="flex flex-col items-center justify-center">
+        <div className="p-3 mb-3 rounded-full bg-white shadow-sm border border-slate-200 text-slate-600 group-hover:scale-105 group-hover:text-slate-900 transition-all">
+          <UploadCloud className="w-6 h-6" />
+        </div>
+        <p className="mb-1 text-sm text-slate-600 text-center">
+          <span className="font-bold text-slate-900">Cliquez pour ajouter une photo</span> ou glissez-la ici
+        </p>
+        <p className="text-xs text-slate-500">PNG, JPG ou SVG (Max. 5MB)</p>
+      </div>
+      <input
+        id="image-upload"
+        type="file"
+        accept="image/*"
+        onChange={handleImageChange}
+        className="hidden"
+      />
+    </label>
+  )}
 </div>
 
         <div className="mt-8 flex justify-end pt-5 border-t border-slate-100">

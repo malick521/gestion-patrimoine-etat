@@ -29,17 +29,16 @@ public class BienController {
     private BienService bienService;
 
     // POST /api/biens (CRÉATION AVEC IMAGE OPTIONNELLE VIA FORMDATA)
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping
     public ResponseEntity<BienResponseDTO> creer(
-            @RequestPart("bien") @Valid BienRequestDTO dto, 
-            @RequestPart(value = "file", required = false) MultipartFile imageFile, 
+            @RequestBody @Valid BienRequestDTO dto,
             Authentication authentication) {
-        
-        String userEmail = (authentication != null) ? authentication.getName() : null;
-        
+
+        String userEmail = authentication != null ? authentication.getName() : null;
+
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(bienService.creer(dto, imageFile, userEmail)); 
+                .body(bienService.creer(dto, null, userEmail));
     }
 
     // GET /api/biens
@@ -105,7 +104,8 @@ public class BienController {
     }
 
     // POST /api/biens/{id}/image (METTRE À JOUR UNIQUEMENT L'IMAGE)
-    @PostMapping("/{id}/image")
+    @PostMapping(value = "/{id}/image",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<BienResponseDTO> uploadImage(
             @PathVariable String id,
             @RequestParam("file") MultipartFile file,

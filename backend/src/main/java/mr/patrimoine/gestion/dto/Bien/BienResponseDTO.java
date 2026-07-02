@@ -30,6 +30,8 @@ public class BienResponseDTO {
     private String numeroSerie;
     private String observations;
     private String imageUrl;
+    private Double latitude;
+    private Double longitude;
     private LocalDateTime dateCreation;
     private LocalDateTime dateModification;
 }

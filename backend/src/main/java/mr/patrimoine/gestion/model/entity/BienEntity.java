@@ -52,11 +52,9 @@ public class BienEntity {
     private String fournisseur;
     private String numeroSerie;
     private String observations;
-    private String imageUrl;
-    @Column(name = "latitude")
-    private Double latitude;
 
-    @Column(name = "longitude")
+    private String imageUrl;
+    private Double latitude;
     private Double longitude;
 
     @CreatedDate

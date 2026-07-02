@@ -111,6 +111,7 @@ export interface BienResponseDTO {
   localisation: string;
   latitude: number | null;
   longitude: number | null;
+  imageUrl?: string;
 
   categorieId: string;
   categorieNom: string;
