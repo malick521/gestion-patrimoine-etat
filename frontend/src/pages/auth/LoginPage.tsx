@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { authAPI } from '../../api/authAPI';
 import { UserRequestDTO } from '../../types';
+import { Toast } from '../../components/common/Toast'; // ← ajuste le chemin selon ton arborescence
 import { 
   Mail, Lock, User, Building, ShieldCheck, 
   Eye, EyeOff, Loader2, ArrowRight, Info
@@ -18,6 +19,9 @@ export const LoginPage: React.FC = () => {
   
   // STATE : Pour afficher le message de mot de passe oublié
   const [showForgotMsg, setShowForgotMsg] = useState(false);
+
+  // STATE : Toast
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // States du formulaire
   const [email, setEmail] = useState('');
@@ -56,12 +60,13 @@ export const LoginPage: React.FC = () => {
       };
       
       await authAPI.register(userData);
-      alert("Compte créé avec succès ! Veuillez vous connecter.");
+      setToast({ message: "Compte créé avec succès ! Veuillez vous connecter.", type: 'success' });
       setIsRegisterMode(false);
       resetForm();
     } catch (err: any) {
       console.error(err);
       setError("Erreur lors de l'inscription. Vérifiez vos données.");
+      setToast({ message: "Erreur lors de l'inscription. Vérifiez vos données.", type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -88,6 +93,15 @@ export const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen flex w-full font-sans bg-slate-50 selection:bg-[#00236f]/20">
       
+      {/* TOAST */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       {/* SECTION GAUCHE : VISUEL MARQUE & MAURITANIE */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[#00174f]">
         <div className="absolute inset-0 z-0">
@@ -97,7 +111,6 @@ export const LoginPage: React.FC = () => {
             src="https://encrypted-tbn0.gstatic.com/licensed-image?q=tbn:ANd9GcR8vejWCpBOLF4xrD61zhZ7BRJxHVS6HXQ_9rgIxqpVWgdWYamQRWZdAyPeqg_ulus_4IcFk_zT5DzZFmYkIoSk4_s&s=19" 
           />
         </div>
-        {/* Dégradé légèrement ajusté pour bien voir l'image tout en gardant le texte lisible */}
         <div className="absolute inset-0 z-10 bg-gradient-to-tr from-[#00174f]/90 via-[#00236f]/70 to-transparent mix-blend-multiply"></div>
         
         <div className="relative z-20 flex flex-col justify-between p-16 w-full h-full text-white">
@@ -113,7 +126,6 @@ export const LoginPage: React.FC = () => {
               Gestion Stratégique du Patrimoine de l'État
             </h1>
             
-            {/* MOTTO NATIONAL */}
             <div className="inline-block px-4 py-1.5 mb-6 border border-emerald-500/40 bg-emerald-900/40 backdrop-blur-sm rounded-full shadow-sm">
               <p className="text-emerald-300 text-xs font-bold tracking-[0.2em] uppercase">
                 Honneur • Fraternité • Justice
@@ -237,7 +249,6 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* BLOC : MESSAGE D'INFORMATION MOT DE PASSE */}
             {showForgotMsg && !isRegisterMode && (
               <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
                 <Info className="w-5 h-5 text-[#00236f] shrink-0 mt-0.5" />
