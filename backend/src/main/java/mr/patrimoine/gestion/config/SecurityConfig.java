@@ -67,13 +67,27 @@ public class SecurityConfig {
 
                         // ===== BIENS =====
                         // 🟢 LOGIQUE : L'Auditeur et le Consultant doivent pouvoir VOIR les biens
-                        .requestMatchers(HttpMethod.GET, "/api/biens/**").hasAnyRole("ADMIN", "GESTIONNAIRE", "AUDITEUR", "CONSULTANT")
-                        .requestMatchers(HttpMethod.POST, "/api/biens/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
-                        .requestMatchers(HttpMethod.PUT, "/api/biens/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
-                        .requestMatchers(HttpMethod.PATCH, "/api/biens/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
-                        .requestMatchers("/api/biens/images/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/biens/**").hasAnyRole("ADMIN","GESTIONNAIRE","AUDITEUR","CONSULTANT")
+                                .requestMatchers("/api/biens/images/**").permitAll()
 
+// Lecture des biens
+                                .requestMatchers(HttpMethod.GET, "/api/biens/**")
+                                .hasAnyRole("ADMIN", "GESTIONNAIRE", "AUDITEUR", "CONSULTANT")
+
+// Création
+                                .requestMatchers(HttpMethod.POST, "/api/biens/**")
+                                .hasAnyRole("ADMIN", "GESTIONNAIRE")
+
+// Modification
+                                .requestMatchers(HttpMethod.PUT, "/api/biens/**")
+                                .hasAnyRole("ADMIN", "GESTIONNAIRE")
+
+// Patch
+                                .requestMatchers(HttpMethod.PATCH, "/api/biens/**")
+                                .hasAnyRole("ADMIN", "GESTIONNAIRE")
+
+// Suppression
+                                .requestMatchers(HttpMethod.DELETE, "/api/biens/**")
+                                .hasRole("ADMIN")
                         // ===== AFFECTATIONS =====
                         .requestMatchers(HttpMethod.GET, "/api/affectations/**").hasAnyRole("ADMIN", "GESTIONNAIRE", "AUDITEUR", "CONSULTANT")
                         .requestMatchers(HttpMethod.POST, "/api/affectations/**").hasAnyRole("ADMIN", "GESTIONNAIRE")
@@ -99,6 +113,8 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+                System.out.println("SECURITY CONFIG CHARGEE");
 
         return http.build();
     }

@@ -117,12 +117,22 @@ public class BienController {
     // GET /api/biens/images/{filename}
     @GetMapping("/images/{filename}")
     public ResponseEntity<Resource> getImage(@PathVariable String filename) throws IOException {
+
+        System.out.println("IMAGE DEMANDEE : " + filename);
+
         Path filePath = Paths.get("uploads/biens/").resolve(filename);
         Resource resource = new UrlResource(filePath.toUri());
+
+
+        System.out.println("Existe ? " + resource.exists());
+
 
         if (!resource.exists()) {
             return ResponseEntity.notFound().build();
         }
+
+        System.out.println(filePath.toAbsolutePath());
+        System.out.println(resource.exists());
 
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_JPEG)
